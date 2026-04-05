@@ -2,22 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Settings, ChevronRight, Scan, TrendingUp, BarChart3, FileText } from "lucide-react"
-import ThemeToggle from "./components/ThemeToggle"
+import { Settings, ChevronRight, Scan, BarChart3, FileText, Camera } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "./components/Motion"
-import { getReferralCount, addReferral } from "./lib/storage"
-
-const WINS = [
-  { name: "Sarah M.", item: "Nike Air Max 90", price: 180, ago: "2m" },
-  { name: "James T.", item: "MacBook Pro 14\"", price: 890, ago: "5m" },
-  { name: "Emma K.", item: "Vintage Tiffany Lamp", price: 220, ago: "12m" },
-  { name: "Omar H.", item: "Canada Goose Parka", price: 475, ago: "18m" },
-  { name: "Lisa C.", item: "Dyson Airwrap", price: 340, ago: "25m" },
-  { name: "Mike R.", item: "PS5 + 2 Controllers", price: 420, ago: "31m" },
-]
+import { useCurrency } from "./components/CurrencyProvider"
+import { addReferral } from "./lib/storage"
+import { supabase } from "./lib/supabase"
 
 const FEATURES = [
-  { icon: <Scan size={20} />, title: "AI Identification", desc: "Instant item recognition from any photo" },
+  { icon: <Camera size={20} />, title: "AI Identification", desc: "Instant item recognition from any photo" },
   { icon: <BarChart3 size={20} />, title: "Live Market Prices", desc: "Compare across 5 platforms at once" },
   { icon: <FileText size={20} />, title: "Instant Listings", desc: "Ready-to-post title and description" },
 ]
@@ -25,7 +17,9 @@ const FEATURES = [
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [totalValue, setTotalValue] = useState(0)
+  const { formatPrice } = useCurrency()
+  const [todayValue, setTodayValue] = useState<number | null>(null)
+  const [loadingStats, setLoadingStats] = useState(true)
 
   useEffect(() => {
     const ref = searchParams.get("ref")
@@ -33,20 +27,31 @@ export default function Home() {
       localStorage.setItem("flipt-ref-visited", ref)
       addReferral()
     }
-    // Animate counter
-    let frame: number
-    const target = 847293
-    const duration = 2000
-    const start = performance.now()
-    function step(now: number) {
-      const elapsed = now - start
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setTotalValue(Math.round(target * eased))
-      if (progress < 1) frame = requestAnimationFrame(step)
+
+    // Load real total value from today's scans
+    async function loadStats() {
+      try {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const { data } = await supabase
+          .from("scans")
+          .select("estimated_value_low, estimated_value_high")
+          .gte("created_at", today.toISOString())
+
+        if (data && data.length > 0) {
+          const total = data.reduce((sum: number, s: { estimated_value_low: number; estimated_value_high: number }) => {
+            return sum + Math.round((s.estimated_value_low + s.estimated_value_high) / 2)
+          }, 0)
+          setTodayValue(total)
+        } else {
+          setTodayValue(0)
+        }
+      } catch {
+        setTodayValue(0)
+      }
+      setLoadingStats(false)
     }
-    frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
+    loadStats()
   }, [searchParams])
 
   return (
@@ -61,37 +66,36 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Hero stat */}
+        {/* Hero */}
         <FadeUp>
-          <section style={{ padding: "48px 20px 32px", textAlign: "center" }}>
-            <p className="stat-label" style={{ color: "var(--green-accent)", marginBottom: "8px" }}>Total Value Found Today</p>
-            <p style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(48px, 12vw, 72px)", fontWeight: 700, lineHeight: 1, marginBottom: "8px" }}>
-              ${totalValue.toLocaleString()}
-            </p>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>by Flipt users across Canada</p>
-            <div style={{ width: "48px", height: "1px", background: "var(--green-accent)", margin: "24px auto 0", opacity: 0.4 }} />
+          <section style={{ padding: "40px 20px 32px", textAlign: "center" }}>
+            {!loadingStats && todayValue != null && todayValue > 0 ? (
+              <>
+                <p className="stat-label" style={{ color: "var(--green-accent)", marginBottom: "8px" }}>Total Value Found Today</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(40px, 12vw, 64px)", fontWeight: 700, lineHeight: 1, marginBottom: "8px" }}>
+                  {formatPrice(todayValue)}
+                </p>
+                <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>by Flipt users across Canada</p>
+              </>
+            ) : (
+              <>
+                <h1 style={{ fontSize: "clamp(32px, 8vw, 48px)", lineHeight: 1.15, marginBottom: "12px", maxWidth: "480px", margin: "0 auto 12px" }}>
+                  Turn your clutter into cash.
+                </h1>
+                <p style={{ fontSize: "16px", color: "var(--text-secondary)", maxWidth: "360px", margin: "0 auto" }}>
+                  One photo at a time. AI-powered resale pricing for Canadians.
+                </p>
+              </>
+            )}
+            <div style={{ width: "48px", height: "1px", background: "var(--green-accent)", margin: "28px auto 0", opacity: 0.3 }} />
           </section>
         </FadeUp>
 
-        {/* Recent Wins */}
-        <section style={{ marginBottom: "28px" }}>
-          <p className="stat-label" style={{ padding: "0 20px", marginBottom: "12px" }}>Recent Wins</p>
-          <div className="h-scroll">
-            {WINS.map((w, i) => (
-              <div key={i} style={{ minWidth: "160px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "14px", padding: "14px", flexShrink: 0 }}>
-                <p style={{ fontSize: "14px", fontWeight: 600, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.item}</p>
-                <p style={{ fontSize: "20px", fontWeight: 700, color: "var(--green-accent)", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>${w.price}</p>
-                <p style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{w.name} · {w.ago} ago</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Scan button */}
         <FadeUp delay={0.15}>
-          <div style={{ padding: "0 20px", marginBottom: "28px" }}>
+          <div style={{ padding: "0 20px", marginBottom: "32px" }}>
             <button onClick={() => router.push("/scan")} className="btn-primary full glow">
-              Scan an Item
+              <Scan size={20} /> Scan an Item
             </button>
           </div>
         </FadeUp>
@@ -115,18 +119,7 @@ export default function Home() {
             ))}
           </div>
         </StaggerContainer>
-
-        {/* Trending pills */}
-        <section style={{ marginTop: "28px" }}>
-          <p className="stat-label" style={{ padding: "0 20px", marginBottom: "10px" }}>Trending in Ottawa</p>
-          <div className="h-scroll">
-            {["Electronics", "Clothing", "Furniture", "Sports", "Books", "Collectibles", "Home"].map(c => (
-              <button key={c} className="pill" onClick={() => router.push("/marketplace")}>{c}</button>
-            ))}
-          </div>
-        </section>
       </main>
-      <ThemeToggle />
     </PageTransition>
   )
 }

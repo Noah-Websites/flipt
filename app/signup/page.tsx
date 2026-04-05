@@ -119,9 +119,10 @@ export default function Signup() {
     return (
       <CurrencySelector
         selected={selectedCurrency}
-        onSelect={setSelectedCurrency}
+        onSelect={(code) => { setSelectedCurrency(code); saveCurrency(code); setCurrencyCode(code) }}
         onDone={handleCurrencyDone}
         fullScreen
+        autoAdvance
       />
     )
   }

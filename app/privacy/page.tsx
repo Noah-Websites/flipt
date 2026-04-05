@@ -1,9 +1,7 @@
-import ThemeToggle from "../components/ThemeToggle"
 
 export default function Privacy() {
   return (
     <>
-      <ThemeToggle />
       <div className="legal-page">
         <h2>Privacy Policy</h2>
         <p className="legal-updated">Last updated: April 2026</p>

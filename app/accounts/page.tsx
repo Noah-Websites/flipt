@@ -1,10 +1,13 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Link2, Unlink, ExternalLink, Eye, MessageSquare, Package, Search, Check, Copy, ChevronUp, ChevronDown, Lightbulb, BarChart3 } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { useAuth } from "../components/AuthProvider"
+import { LockedPage } from "../components/UpgradeModal"
+import { useSubscription } from "../lib/useSubscription"
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
-import ThemeToggle from "../components/ThemeToggle"
 import { useTheme } from "../components/ThemeProvider"
 import {
   getConnectedAccounts, connectAccount, disconnectAccount,
@@ -38,6 +41,9 @@ function HealthRing({ score }: { score: number }) {
 }
 
 export default function Accounts() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const { theme } = useTheme()
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [listings, setListings] = useState<AccountListing[]>([])
@@ -124,6 +130,17 @@ export default function Accounts() {
 
   if (!mounted) return null
 
+  if (!canAccess("multi_account")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2>Account Manager</h2></div>
+          <LockedPage title="Account Manager requires a Business plan" description="Connect and manage all your selling platform accounts in one place" plan="business" onUpgrade={() => router.push("/settings")} />
+        </main>
+      </PageTransition>
+    )
+  }
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "accounts", label: "Accounts" },
     { key: "listings", label: "Listings" },
@@ -132,7 +149,6 @@ export default function Accounts() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
 
       {/* Connect Modal */}
       {connectModal && (

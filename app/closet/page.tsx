@@ -4,13 +4,17 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Archive, Check } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
+import { useAuth } from "../components/AuthProvider"
+import { LockedPage } from "../components/UpgradeModal"
+import { useSubscription } from "../lib/useSubscription"
 import { getCloset, updateClosetItem, removeFromCloset, type ClosetItem, type ClosetStatus } from "../lib/storage"
 
 const STATUSES: ClosetStatus[] = ["Storing", "Listed", "Sold", "Donated"]
 
 export default function Closet() {
   const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const [items, setItems] = useState<ClosetItem[]>([])
   const [mounted, setMounted] = useState(false)
   const [editingSold, setEditingSold] = useState<string | null>(null)
@@ -59,9 +63,19 @@ export default function Closet() {
 
   if (!mounted) return null
 
+  if (!canAccess("closet")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2>My Closet</h2></div>
+          <LockedPage title="My Closet is a Pro feature" description="Track your inventory, mark items as sold, and see your total earnings" plan="pro" onUpgrade={() => router.push("/settings")} />
+        </main>
+      </PageTransition>
+    )
+  }
+
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{
         display: "flex",
         flexDirection: "column",

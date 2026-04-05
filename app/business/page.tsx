@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Check, X, Download } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
+import { useAuth } from "../components/AuthProvider"
+import { LockedPage } from "../components/UpgradeModal"
+import { useSubscription } from "../lib/useSubscription"
 import {
   getBizItems, addBizItem, updateBizItem, removeBizItem,
   getBizExpenses, addBizExpense, removeBizExpense,
@@ -11,6 +14,9 @@ import {
 } from "../lib/storage"
 
 export default function Business() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const [items, setItems] = useState<BizItem[]>([])
   const [expenses, setExpenses] = useState<BizExpense[]>([])
   const [mounted, setMounted] = useState(false)
@@ -86,6 +92,17 @@ export default function Business() {
 
   if (!mounted) return null
 
+  if (!canAccess("business_mode")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2>Business Mode</h2></div>
+          <LockedPage title="Business Mode requires a Business plan" description="Track revenue, expenses, profit and loss, and estimated taxes" plan="business" onUpgrade={() => router.push("/settings")} />
+        </main>
+      </PageTransition>
+    )
+  }
+
   const TABS = [
     { key: "profit" as const, label: "Profit Tracker" },
     { key: "expenses" as const, label: "Expenses" },
@@ -94,7 +111,6 @@ export default function Business() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", background: "#0a0d12", padding: "0 0 120px" }}>
 
         {/* Header */}

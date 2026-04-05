@@ -9,12 +9,12 @@ import {
   Check, X, Copy, Sparkles,
 } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
 import { useTheme } from "../components/ThemeProvider"
 import { useAuth } from "../components/AuthProvider"
 import { useCurrency } from "../components/CurrencyProvider"
 import CurrencySelector from "../components/CurrencySelector"
 import { supabase } from "../lib/supabase"
+import { getProfile as getDbProfile, updateProfile as updateDbProfile } from "../lib/db"
 import {
   getProfile, updateProfile, getPlan, setPlan, getReferralCode,
   getNotifPrefs, setNotifPrefs, clearHistory, signOut as localSignOut,
@@ -80,20 +80,36 @@ export default function Settings() {
   const { currency, currencyCode, setCurrencyCode } = useCurrency()
 
   useEffect(() => {
-    const p = getProfile()
-    // Override with Supabase data if signed in
-    if (user) {
-      const meta = user.user_metadata || {}
-      p.email = user.email || p.email
-      p.name = meta.full_name || meta.name || p.name
-      p.joinedAt = user.created_at || p.joinedAt
+    async function load() {
+      const p = getProfile()
+      // Try loading from Supabase database
+      if (user) {
+        const { data: dbProfile } = await getDbProfile(user.id)
+        if (dbProfile) {
+          p.email = dbProfile.email || user.email || p.email
+          p.name = dbProfile.display_name || p.name
+          p.joinedAt = dbProfile.created_at || p.joinedAt
+          setRefCode(dbProfile.referral_code || getReferralCode())
+          if (dbProfile.plan && dbProfile.plan !== "free") {
+            setPlan(dbProfile.plan as PlanTier)
+            setCurrentPlan(dbProfile.plan as PlanTier)
+          }
+        } else {
+          // Fallback to auth metadata
+          const meta = user.user_metadata || {}
+          p.email = user.email || p.email
+          p.name = meta.full_name || meta.name || p.name
+          p.joinedAt = user.created_at || p.joinedAt
+        }
+      }
+      setProfile(p)
+      setNameVal(p.name)
+      setCurrentPlan(getPlan())
+      setNotifs(getNotifPrefs())
+      if (!refCode) setRefCode(getReferralCode())
+      setMounted(true)
     }
-    setProfile(p)
-    setNameVal(p.name)
-    setCurrentPlan(getPlan())
-    setNotifs(getNotifPrefs())
-    setRefCode(getReferralCode())
-    setMounted(true)
+    load()
 
     // Handle Stripe redirect
     if (searchParams.get("success") === "true") {
@@ -118,9 +134,9 @@ export default function Settings() {
     updateProfile({ name: nameVal })
     setProfile(prev => ({ ...prev, name: nameVal }))
     setEditName(false)
-    // Also update Supabase user metadata if signed in
     if (user) {
       await supabase.auth.updateUser({ data: { full_name: nameVal } })
+      await updateDbProfile(user.id, { display_name: nameVal })
     }
   }
 
@@ -199,7 +215,6 @@ export default function Settings() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
 
       {/* Currency picker modal */}
       {showCurrencyPicker && (

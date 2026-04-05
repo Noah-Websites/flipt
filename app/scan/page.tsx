@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Lock, Check, ImagePlus, Upload, Camera } from "lucide-react"
-import ThemeToggle from "../components/ThemeToggle"
+import { useAuth } from "../components/AuthProvider"
 import { addToHistory, saveBulkReport, isPro, getBonusScans, type BulkReportItem } from "../lib/storage"
+import { saveScan } from "../lib/db"
 
 const FREE_SCAN_LIMIT = 5
 const STORAGE_KEY = "flipt-scan-count"
@@ -31,6 +32,7 @@ interface BulkFile {
 export default function Scan() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const isBulk = searchParams.get("bulk") === "true"
 
   const [preview, setPreview] = useState<string | null>(null)
@@ -115,13 +117,33 @@ export default function Scan() {
       const newCount = incrementScanCount()
       setScanCount(newCount)
 
+      // Save to localStorage (fallback)
       const historyEntry = addToHistory({
         item: data.item, valueLow: data.valueLow, valueHigh: data.valueHigh,
         platform: data.platform, title: data.title, description: data.description, imageUrl: preview,
       })
 
+      // Save to Supabase if logged in
+      let dbScanId: string | null = null
+      if (user) {
+        const { data: dbScan } = await saveScan(user.id, {
+          item_name: data.item,
+          brand: data.brand?.name,
+          condition,
+          estimated_value_low: data.valueLow,
+          estimated_value_high: data.valueHigh,
+          best_platform: data.platform,
+          listing_title: data.title,
+          listing_description: data.description,
+          image_url: preview || undefined,
+          ai_response: data,
+        })
+        if (dbScan) dbScanId = dbScan.id
+      }
+
       sessionStorage.setItem("flipt-result", JSON.stringify(data))
       sessionStorage.setItem("flipt-result-id", historyEntry.id)
+      if (dbScanId) sessionStorage.setItem("flipt-db-scan-id", dbScanId)
       if (imageData) sessionStorage.setItem("flipt-scan-image-data", imageData)
       sessionStorage.setItem("flipt-scan-media-type", mediaType)
       if (preview) sessionStorage.setItem("flipt-image", preview)
@@ -179,7 +201,6 @@ export default function Scan() {
   if (showPaywall) {
     return (
       <>
-        <ThemeToggle />
         <main style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "48px 24px", gap: "28px" }}>
           <div style={{ width: "72px", height: "72px", borderRadius: "20px", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Lock size={32} style={{ color: "var(--text-muted)" }} />
@@ -209,7 +230,6 @@ export default function Scan() {
   if (isBulk) {
     return (
       <>
-        <ThemeToggle />
         <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "48px 24px 100px", gap: "28px" }}>
           <h2 style={{ textAlign: "center" }}>
             Bulk Scan
@@ -300,7 +320,6 @@ export default function Scan() {
 
   return (
     <>
-      <ThemeToggle />
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", background: "#0a0f0a", color: "#fff", padding: "0 0 120px", gap: "0" }}>
 
         {/* Scan counter bar at top */}

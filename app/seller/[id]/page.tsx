@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { UserPlus, UserMinus, Clock, Star, Zap, Package } from "lucide-react"
-import ThemeToggle from "../../components/ThemeToggle"
 import { PageTransition } from "../../components/Motion"
 import { getFeed, isFollowing, followSeller, unfollowSeller, type FeedPost } from "../../lib/storage"
 
@@ -49,7 +48,6 @@ export default function SellerProfile() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "32px 16px 120px", gap: "24px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
           <div className="seller-avatar-lg">

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
-import ThemeToggle from "../components/ThemeToggle"
 import { PageTransition } from "../components/Motion"
 import { getBulkReport, bulkAddToCloset, type BulkReportItem } from "../lib/storage"
 
@@ -49,7 +48,6 @@ export default function Report() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "32px 16px 120px", gap: "24px" }}>
         <h2>Room Cleanout Report</h2>
 

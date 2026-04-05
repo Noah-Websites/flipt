@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { TrendingUp, Lightbulb, Check, MapPin, RefreshCw, Flame } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
 import { getMarketEmail, setMarketEmail, getCloset } from "../lib/storage"
 
 const TRENDING = [
@@ -78,7 +77,6 @@ export default function Market() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", background: "#0d0a08", padding: "0 0 120px" }}>
 
         {/* Newspaper masthead */}

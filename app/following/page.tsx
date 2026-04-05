@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Users, UserMinus, Package } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
 import { getFollowing, unfollowSeller, getFeed, type FollowedSeller, type FeedPost } from "../lib/storage"
 
 function getInitials(name: string) {
@@ -40,7 +39,6 @@ export default function Following() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
         <div style={{ padding: "32px 20px 20px" }}>
           <h2 style={{ marginBottom: "4px" }}>Following</h2>

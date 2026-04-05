@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { AlertCircle, Check } from "lucide-react"
-import ThemeToggle from "../../components/ThemeToggle"
 import { PageTransition } from "../../components/Motion"
 import { getListing, isPro, type ListingItem } from "../../lib/storage"
 
@@ -24,7 +23,6 @@ export default function ListingPage() {
   if (!listing) {
     return (
       <PageTransition>
-        <ThemeToggle />
         <main style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: "16px" }}>
           <AlertCircle size={48} style={{ color: "var(--text-faint)" }} />
           <p style={{ fontSize: "18px", fontWeight: "700" }}>Listing not found</p>
@@ -38,7 +36,6 @@ export default function ListingPage() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "32px 16px 120px", gap: "24px" }}>
         <div className="listing-card-preview">
           {listing.imageUrl && (

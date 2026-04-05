@@ -9,10 +9,12 @@ interface Props {
   onSelect: (code: string) => void
   onDone: () => void
   fullScreen?: boolean
+  autoAdvance?: boolean
 }
 
-export default function CurrencySelector({ selected, onSelect, onDone, fullScreen = false }: Props) {
+export default function CurrencySelector({ selected, onSelect, onDone, fullScreen = false, autoAdvance = false }: Props) {
   const [search, setSearch] = useState("")
+  const [justSelected, setJustSelected] = useState<string | null>(null)
 
   const popular = useMemo(() => CURRENCIES.filter(c => POPULAR_CODES.includes(c.code)), [])
   const filtered = useMemo(() => {
@@ -27,6 +29,12 @@ export default function CurrencySelector({ selected, onSelect, onDone, fullScree
 
   function handleSelect(code: string) {
     onSelect(code)
+    if (autoAdvance) {
+      setJustSelected(code)
+      setTimeout(() => {
+        onDone()
+      }, 500)
+    }
   }
 
   const containerStyle = fullScreen
@@ -40,7 +48,7 @@ export default function CurrencySelector({ selected, onSelect, onDone, fullScree
         {fullScreen && (
           <>
             <h2 style={{ marginBottom: "6px" }}>What&apos;s your currency?</h2>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "20px" }}>We&apos;ll show all prices in your local currency</p>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "20px" }}>Tap to select — we&apos;ll show all prices in your local currency</p>
           </>
         )}
         <div style={{ position: "relative" }}>
@@ -61,47 +69,61 @@ export default function CurrencySelector({ selected, onSelect, onDone, fullScree
           <>
             <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", padding: "8px 20px" }}>Popular</p>
             {popular.map(c => (
-              <CurrencyRow key={c.code} currency={c} selected={selected === c.code} onSelect={handleSelect} />
+              <CurrencyRow key={`pop-${c.code}`} currency={c} selected={selected === c.code} justSelected={justSelected === c.code} onSelect={handleSelect} />
             ))}
             <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", padding: "16px 20px 8px" }}>All Currencies</p>
           </>
         )}
         {filtered.map(c => (
-          <CurrencyRow key={c.code} currency={c} selected={selected === c.code} onSelect={handleSelect} />
+          <CurrencyRow key={c.code} currency={c} selected={selected === c.code} justSelected={justSelected === c.code} onSelect={handleSelect} />
         ))}
         {filtered.length === 0 && (
           <p style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-secondary)", fontSize: "14px" }}>No currencies found</p>
         )}
       </div>
 
-      {/* Continue button */}
-      <div style={{ padding: "16px 20px 32px", flexShrink: 0 }}>
-        <button onClick={onDone} className="btn-primary full">
-          Continue
-        </button>
-      </div>
+      {/* Continue button only for non-auto-advance (settings modal) */}
+      {!autoAdvance && (
+        <div style={{ padding: "16px 20px 32px", flexShrink: 0 }}>
+          <button onClick={onDone} className="btn-primary full">
+            Continue
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-function CurrencyRow({ currency, selected, onSelect }: { currency: Currency; selected: boolean; onSelect: (code: string) => void }) {
+function CurrencyRow({ currency, selected, justSelected, onSelect }: {
+  currency: Currency; selected: boolean; justSelected: boolean; onSelect: (code: string) => void
+}) {
   return (
     <button
       onClick={() => onSelect(currency.code)}
       style={{
         display: "flex", alignItems: "center", gap: "14px", width: "100%",
-        padding: "12px 20px", background: selected ? "var(--green-light)" : "none",
+        padding: "14px 20px",
+        background: justSelected ? "var(--green-light)" : selected ? "var(--green-light)" : "none",
         border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer",
-        fontFamily: "var(--font-body)", textAlign: "left", minHeight: "52px",
-        transition: "background 0.1s ease",
+        fontFamily: "var(--font-body)", textAlign: "left", minHeight: "56px",
+        transition: "background 0.15s ease",
       }}
     >
-      <span style={{ fontSize: "24px", width: "32px", textAlign: "center" }}>{currency.flag}</span>
+      <span style={{ fontSize: "26px", width: "36px", textAlign: "center" }}>{currency.flag}</span>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: "15px", fontWeight: 500, color: "var(--text)" }}>{currency.name}</p>
         <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{currency.code} · {currency.symbol}</p>
       </div>
-      {selected && <Check size={18} style={{ color: "var(--green-accent)", flexShrink: 0 }} />}
+      {(selected || justSelected) && (
+        <div style={{
+          width: "24px", height: "24px", borderRadius: "50%",
+          background: "var(--green-accent)", display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, transition: "transform 0.2s ease",
+          transform: justSelected ? "scale(1.1)" : "scale(1)",
+        }}>
+          <Check size={14} color="#fff" />
+        </div>
+      )}
     </button>
   )
 }

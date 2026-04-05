@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Home, ScanLine, ShoppingBag, Rss, MoreHorizontal, Clock, Archive, Bookmark, Users, Gift, BarChart3, Briefcase, Gem, LayoutGrid, Settings } from "lucide-react"
-import { getWatchlistCount } from "../lib/storage"
+import { getWatchlistCount, getPlan } from "../lib/storage"
 
 const NAV_ITEMS = [
   { label: "Home", path: "/", Icon: Home },

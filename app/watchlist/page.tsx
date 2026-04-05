@@ -4,8 +4,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Bookmark, Trash2, Bell, BellOff, TrendingDown, Package } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
 import { getWatchlist, removeFromWatchlist, toggleWatchlistNotify, type WatchlistItem } from "../lib/storage"
+import { useAuth } from "../components/AuthProvider"
+import { LockedPage } from "../components/UpgradeModal"
+import { useSubscription } from "../lib/useSubscription"
 
 function timeAgo(iso: string) {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
@@ -16,6 +18,8 @@ function timeAgo(iso: string) {
 
 export default function Watchlist() {
   const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const [items, setItems] = useState<WatchlistItem[]>([])
   const [mounted, setMounted] = useState(false)
 
@@ -28,9 +32,19 @@ export default function Watchlist() {
 
   if (!mounted) return null
 
+  if (!canAccess("watchlist")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2>Watchlist</h2></div>
+          <LockedPage title="Watchlist is a Pro feature" description="Save items and track price changes across all platforms" plan="pro" onUpgrade={() => router.push("/settings")} />
+        </main>
+      </PageTransition>
+    )
+  }
+
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
         <div style={{ padding: "32px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>

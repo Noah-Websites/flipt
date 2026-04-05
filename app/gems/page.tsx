@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Gem, Search, Check, Loader2, Sparkles } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
+import { useAuth } from "../components/AuthProvider"
+import { LockedPage } from "../components/UpgradeModal"
+import { useSubscription } from "../lib/useSubscription"
 
 interface GemItem { name: string; category: string; whyValuable: string; avgValue: number; valueLow: number; valueHigh: number; bestPlatform: string; surpriseFactor: "Low" | "Medium" | "High" }
 interface SearchResult { item: string; worthSelling: boolean; avgValue: number; valueLow: number; valueHigh: number; bestPlatform: string; verdict: string }
@@ -13,6 +16,9 @@ function getChecklist(): string[] { if (typeof window === "undefined") return []
 function toggleChecklist(name: string): string[] { const l = getChecklist(); const i = l.indexOf(name); if (i >= 0) l.splice(i, 1); else l.push(name); localStorage.setItem(CHECKLIST_KEY, JSON.stringify(l)); return [...l] }
 
 export default function Gems() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const [gems, setGems] = useState<GemItem[]>([])
   const [loading, setLoading] = useState(false)
   const [checklist, setChecklist] = useState<string[]>([])
@@ -28,13 +34,23 @@ export default function Gems() {
 
   if (!mounted) return null
 
+  if (!canAccess("hidden_gems")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2>Hidden Gems</h2></div>
+          <LockedPage title="Hidden Gems is a Pro feature" description="Discover surprisingly valuable items hiding in your home" plan="pro" onUpgrade={() => router.push("/settings")} />
+        </main>
+      </PageTransition>
+    )
+  }
+
   const gold = "#c9a84c"
   const goldLight = "rgba(201,168,76,0.08)"
   const goldBorder = "rgba(201,168,76,0.2)"
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", background: "#0d0b08", padding: "0 0 120px" }}>
 
         {/* Header */}

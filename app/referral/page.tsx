@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { Check } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
-import ThemeToggle from "../components/ThemeToggle"
 import { getReferralCode, getReferralCount, getBonusScans } from "../lib/storage"
 
 export default function Referral() {
@@ -32,7 +31,6 @@ export default function Referral() {
 
   return (
     <PageTransition>
-      <ThemeToggle />
       <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
 
         {/* Celebratory header */}
