@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   LayoutDashboard, DollarSign, Megaphone, Box, Settings, Bot,
   TrendingUp, TrendingDown, Users, Scan, ChevronRight, Check, X,
   Shield, Database, CreditCard, Lock, AlertCircle, Play, Clock,
   Plus, ArrowUp, ArrowDown, Minus, Activity, Zap, MessageSquare,
-  FileText, Eye, Heart, Send, Loader2,
+  FileText, Eye, Heart, Send, Loader2, RefreshCw,
 } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from "recharts"
 
 const PASSWORD = "FliptCEO2026"
@@ -96,9 +97,12 @@ const NAV: { key: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "product", label: "Product", icon: Box },
   { key: "operations", label: "Operations", icon: Settings },
   { key: "agents", label: "Agents", icon: Bot },
+  { key: "office", label: "Office", icon: LayoutDashboard },
 ]
 
 export default function CEODashboard() {
+  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
   const [authed, setAuthed] = useState(false)
   const [pw, setPw] = useState("")
   const [pwError, setPwError] = useState(false)
@@ -106,11 +110,89 @@ export default function CEODashboard() {
   const [proposals, setProposals] = useState(PROPOSALS)
   const [content, setContent] = useState(CONTENT_QUEUE)
   const [mounted, setMounted] = useState(false)
+  const [dbProposals, setDbProposals] = useState<Array<{ id: string; agent_name: string; title: string; description: string; impact_rating: string; complexity: string; proposal_type: string; status: string; content: unknown }>>([])
+  const [dbActivity, setDbActivity] = useState<Array<{ agent_name: string; action: string; created_at: string }>>([])
+  const [briefing, setBriefing] = useState<string | null>(null)
+  const [agentRunning, setAgentRunning] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  // Real metrics
+  const [metrics, setMetrics] = useState({ totalUsers: 0, proUsers: 0, bizUsers: 0, freeUsers: 0, scansToday: 0, mrr: 0, newUsersToday: 0, pendingCount: 0 })
+  const [marketingContent, setMarketingContent] = useState<Array<{ id: string; title: string; description: string; agent_name: string; impact_rating: string; complexity: string }>>([])
+  const [featureProposals, setFeatureProposals] = useState<Array<{ id: string; title: string; description: string; impact_rating: string; complexity: string }>>([])
+
+  const loadDashboardData = useCallback(async () => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+
+    // User counts by plan
+    const { data: profiles } = await sb.from("profiles").select("plan, created_at")
+    const allProfiles = profiles || []
+    const proCount = allProfiles.filter(p => p.plan === "pro").length
+    const bizCount = allProfiles.filter(p => p.plan === "business").length
+    const freeCount = allProfiles.filter(p => !p.plan || p.plan === "free").length
+    const newToday = allProfiles.filter(p => new Date(p.created_at) >= today).length
+    const mrr = proCount * 5.99 + bizCount * 14.99
+
+    // Scans today
+    const { count: scansToday } = await sb.from("scans").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString())
+
+    // Pending proposals count
+    const { count: pendingCount } = await sb.from("agent_proposals").select("*", { count: "exact", head: true }).eq("status", "pending")
+
+    setMetrics({ totalUsers: allProfiles.length, proUsers: proCount, bizUsers: bizCount, freeUsers: freeCount, scansToday: scansToday || 0, mrr: Math.round(mrr * 100) / 100, newUsersToday: newToday, pendingCount: pendingCount || 0 })
+
+    // Pending proposals (all types)
+    const { data: props } = await sb.from("agent_proposals").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(20)
+    if (props) setDbProposals(props)
+
+    // Marketing content
+    const { data: mktg } = await sb.from("agent_proposals").select("*").eq("proposal_type", "marketing_content").eq("status", "pending").order("created_at", { ascending: false })
+    if (mktg) setMarketingContent(mktg)
+
+    // Feature proposals
+    const { data: feats } = await sb.from("agent_proposals").select("*").eq("proposal_type", "feature").eq("status", "pending").order("created_at", { ascending: false })
+    if (feats) setFeatureProposals(feats)
+
+    // Activity
+    const { data: acts } = await sb.from("agent_activity").select("*").order("created_at", { ascending: false }).limit(20)
+    if (acts) setDbActivity(acts)
+
+    // Briefing
+    const { data: brief } = await sb.from("agent_activity").select("details").eq("status", "morning_briefing").order("created_at", { ascending: false }).limit(1)
+    if (brief?.[0]?.details) setBriefing(brief[0].details)
+  }, [])
 
   useEffect(() => {
     if (localStorage.getItem(AUTH_KEY) === "true") setAuthed(true)
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (authed) loadDashboardData()
+  }, [authed, loadDashboardData])
+
+  function showToastMsg(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000) }
+
+  async function runAgent(name: string, path: string) {
+    setAgentRunning(name)
+    try {
+      await fetch(path)
+      await loadDashboardData()
+      showToastMsg(`${name} completed`)
+    } catch { showToastMsg(`${name} failed`) }
+    setAgentRunning(null)
+  }
+
+  async function approveProposal(id: string) {
+    await sb.from("agent_proposals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", id)
+    setDbProposals(prev => prev.filter(p => p.id !== id))
+    showToastMsg("Proposal approved")
+  }
+
+  async function rejectProposal(id: string) {
+    await sb.from("agent_proposals").update({ status: "rejected", rejected_at: new Date().toISOString() }).eq("id", id)
+    setDbProposals(prev => prev.filter(p => p.id !== id))
+    showToastMsg("Proposal rejected")
+  }
 
   function handleLogin() {
     if (pw === PASSWORD) {
@@ -174,7 +256,7 @@ export default function CEODashboard() {
           {NAV.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setSection(key)}
+              onClick={() => key === "office" ? window.location.href = "/ceo/office" : setSection(key)}
               style={{
                 display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
                 background: section === key ? "rgba(82,183,136,0.1)" : "transparent",
@@ -200,17 +282,66 @@ export default function CEODashboard() {
           <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "28px" }}>{greeting}, Noah</h2>
         </div>
 
+        {toast && <div style={{ position: "fixed", top: "20px", right: "20px", zIndex: 300, background: S.surface, border: `1px solid ${S.border}`, borderRadius: "10px", padding: "12px 20px", fontSize: "14px", color: S.green, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>{toast}</div>}
+
         {/* ===== OVERVIEW ===== */}
         {section === "overview" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px" }}>
-              <StatCard label="Monthly Recurring Revenue" value="$2,340" trend="up" trendVal="+12% vs last month" />
-              <StatCard label="Active Users" value="847" trend="up" trendVal="+34 this week" />
-              <StatCard label="Scans Today" value="234" trend="up" trendVal="+18% vs yesterday" />
-              <StatCard label="Churn Rate" value="2.3%" trend="down" trendVal="-0.4% vs last month" />
+
+            {/* Morning briefing */}
+            {briefing && (
+              <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
+                <p style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Morning Briefing</p>
+                <p style={{ fontSize: "14px", color: S.text, lineHeight: 1.6, whiteSpace: "pre-line" }}>{briefing}</p>
+              </div>
+            )}
+
+            {/* Agent controls */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => runAgent("All Agents", "/api/agents/run-all")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                {agentRunning ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Play size={14} />}
+                {agentRunning ? `Running ${agentRunning}...` : "Run All Agents"}
+              </button>
+              <button onClick={() => runAgent("Morning Briefing", "/api/agents/morning-briefing")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: S.muted, border: `1px solid ${S.border}`, borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                <RefreshCw size={14} /> Generate Briefing
+              </button>
             </div>
 
-            {/* Proposals */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px" }}>
+              <StatCard label="Monthly Recurring Revenue" value={`$${metrics.mrr.toFixed(2)}`} trend={metrics.mrr > 0 ? "up" : "flat"} trendVal={metrics.mrr > 0 ? `${metrics.proUsers} Pro + ${metrics.bizUsers} Biz` : "No subscribers yet"} />
+              <StatCard label="Total Users" value={String(metrics.totalUsers)} trend={metrics.newUsersToday > 0 ? "up" : "flat"} trendVal={metrics.newUsersToday > 0 ? `+${metrics.newUsersToday} today` : "No new users today"} />
+              <StatCard label="Scans Today" value={String(metrics.scansToday)} trend={metrics.scansToday > 0 ? "up" : "flat"} trendVal={metrics.scansToday > 0 ? "Active scanning" : "No scans yet today"} />
+              <StatCard label="Pending Proposals" value={String(metrics.pendingCount)} trend={metrics.pendingCount > 0 ? "up" : "flat"} trendVal={metrics.pendingCount > 0 ? "Awaiting your review" : "All caught up"} />
+            </div>
+
+            {/* Real proposals from DB */}
+            {dbProposals.length > 0 && (
+              <div>
+                <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Proposals from Agents ({dbProposals.length})</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {dbProposals.map(p => (
+                    <div key={p.id} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                        <div>
+                          <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.agent_name}</span>
+                          <p style={{ fontSize: "16px", fontWeight: 700, marginTop: "2px" }}>{p.title}</p>
+                        </div>
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          <span style={{ padding: "3px 10px", fontSize: "11px", fontWeight: 600, borderRadius: "50px", background: p.impact_rating === "High" ? "rgba(82,183,136,0.1)" : "rgba(201,168,76,0.1)", color: p.impact_rating === "High" ? S.green : "#c9a84c" }}>{p.impact_rating} Impact</span>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: "14px", color: S.muted, lineHeight: 1.5, marginBottom: "14px", whiteSpace: "pre-line" }}>{p.description?.slice(0, 300)}</p>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button onClick={() => approveProposal(p.id)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}><Check size={14} /> Approve</button>
+                        <button onClick={() => rejectProposal(p.id)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: "#e05252", border: "1px solid rgba(224,82,82,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}><X size={14} /> Reject</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mock proposals (fallback) */}
             <div>
               <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Awaiting Your Approval</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -241,11 +372,17 @@ export default function CEODashboard() {
               </div>
             </div>
 
-            {/* Activity */}
+            {/* Real Activity from DB */}
             <div>
-              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Recent Activity</p>
+              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Agent Activity Log</p>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", overflow: "hidden" }}>
-                {ACTIVITY_FEED.map((a, i) => (
+                {dbActivity.length > 0 ? dbActivity.map((a, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 18px", borderBottom: i < dbActivity.length - 1 ? `1px solid ${S.border}` : "none" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", width: "80px", flexShrink: 0 }}>{a.agent_name}</span>
+                    <p style={{ fontSize: "14px", flex: 1 }}>{a.action}</p>
+                    <span style={{ fontSize: "11px", color: S.faint, flexShrink: 0 }}>{new Date(a.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                  </div>
+                )) : ACTIVITY_FEED.map((a, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 18px", borderBottom: i < ACTIVITY_FEED.length - 1 ? `1px solid ${S.border}` : "none" }}>
                     <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", width: "60px", flexShrink: 0 }}>{a.agent}</span>
                     <p style={{ fontSize: "14px", flex: 1 }}>{a.action}</p>
@@ -260,12 +397,17 @@ export default function CEODashboard() {
         {/* ===== REVENUE ===== */}
         {section === "revenue" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+              <button onClick={() => runAgent("CFO Agent", "/api/agents/cfo/revenue")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", background: "transparent", color: S.muted, border: `1px solid ${S.border}`, borderRadius: "8px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                <RefreshCw size={12} /> Refresh Revenue
+              </button>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "12px" }}>
-              <StatCard label="MRR" value="$2,340" trend="up" trendVal="+12%" />
-              <StatCard label="ARR" value="$28,080" trend="up" trendVal="+12%" />
-              <StatCard label="New Today" value="8" trend="up" trendVal="+3 vs avg" />
-              <StatCard label="Churned Today" value="1" trend="flat" trendVal="Normal" />
-              <StatCard label="Avg LTV" value="$67" trend="up" trendVal="+$4" />
+              <StatCard label="MRR" value={`$${metrics.mrr.toFixed(2)}`} trend={metrics.mrr > 0 ? "up" : "flat"} trendVal={metrics.mrr > 0 ? `${metrics.proUsers + metrics.bizUsers} paid` : "No revenue yet"} />
+              <StatCard label="ARR" value={`$${(metrics.mrr * 12).toFixed(0)}`} trend={metrics.mrr > 0 ? "up" : "flat"} trendVal="Projected annually" />
+              <StatCard label="New Today" value={String(metrics.newUsersToday)} trend={metrics.newUsersToday > 0 ? "up" : "flat"} trendVal={metrics.newUsersToday > 0 ? "New signups" : "No new users"} />
+              <StatCard label="Total Users" value={String(metrics.totalUsers)} trend="flat" trendVal={`${metrics.freeUsers} free`} />
+              <StatCard label="Scans Today" value={String(metrics.scansToday)} trend={metrics.scansToday > 0 ? "up" : "flat"} trendVal="Item scans" />
             </div>
 
             <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "20px" }}>
@@ -283,15 +425,15 @@ export default function CEODashboard() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px", textAlign: "center" }}>
-                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)" }}>692</p>
+                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)" }}>{metrics.freeUsers}</p>
                 <p style={{ fontSize: "12px", color: S.muted }}>Free Users</p>
               </div>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px", textAlign: "center" }}>
-                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: S.green }}>128</p>
+                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: S.green }}>{metrics.proUsers}</p>
                 <p style={{ fontSize: "12px", color: S.muted }}>Pro Subscribers</p>
               </div>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px", textAlign: "center" }}>
-                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "#c9a84c" }}>27</p>
+                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "#c9a84c" }}>{metrics.bizUsers}</p>
                 <p style={{ fontSize: "12px", color: S.muted }}>Business Subscribers</p>
               </div>
             </div>
@@ -315,17 +457,22 @@ export default function CEODashboard() {
         {/* ===== MARKETING ===== */}
         {section === "marketing" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px" }}>
-              <StatCard label="TikTok" value="2,340" trend="up" trendVal="+180 this week" />
-              <StatCard label="Instagram" value="1,890" trend="up" trendVal="+95 this week" />
-              <StatCard label="Reddit" value="450" trend="up" trendVal="+67 from last post" />
-              <StatCard label="Twitter/X" value="312" trend="flat" trendVal="Stable" />
+            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+              <button onClick={() => runAgent("CMO Agent", "/api/agents/cmo/content")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                {agentRunning === "CMO Agent" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Plus size={14} />}
+                Generate New Content
+              </button>
             </div>
 
             <div>
-              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Content Awaiting Approval ({content.length})</p>
+              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Content Awaiting Approval ({marketingContent.length})</p>
+              {marketingContent.length === 0 ? (
+                <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "32px", textAlign: "center" }}>
+                  <p style={{ fontSize: "14px", color: S.muted }}>No content pending — click Generate New Content to create some</p>
+                </div>
+              ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {content.map(c => (
+                {marketingContent.map(c => (
                   <div key={c.id} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                       <div>
@@ -349,6 +496,7 @@ export default function CEODashboard() {
                 ))}
                 {content.length === 0 && <p style={{ fontSize: "14px", color: S.muted, padding: "20px 0" }}>Content queue is empty.</p>}
               </div>
+              )}
             </div>
           </div>
         )}
@@ -356,8 +504,46 @@ export default function CEODashboard() {
         {/* ===== PRODUCT ===== */}
         {section === "product" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+              <button onClick={() => runAgent("CTO Agent", "/api/agents/cto/research")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                {agentRunning === "CTO Agent" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Plus size={14} />}
+                Run CTO Research
+              </button>
+              <button onClick={() => runAgent("CPO Agent", "/api/agents/cpo/research")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: S.muted, border: `1px solid ${S.border}`, borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                Run Product Research
+              </button>
+            </div>
+
+            {/* Real proposals from agents */}
+            {featureProposals.length > 0 && (
+              <div>
+                <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Agent Feature Proposals ({featureProposals.length})</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {featureProposals.map(f => (
+                    <div key={f.id} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                        <p style={{ fontSize: "14px", fontWeight: 700 }}>{f.title}</p>
+                        <span style={{ padding: "2px 8px", fontSize: "10px", fontWeight: 600, borderRadius: "50px", background: f.impact_rating === "High" ? "rgba(82,183,136,0.1)" : "rgba(201,168,76,0.1)", color: f.impact_rating === "High" ? S.green : "#c9a84c" }}>{f.impact_rating}</span>
+                      </div>
+                      <p style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>{f.description?.slice(0, 200)}</p>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+                        <button onClick={() => approveProposal(f.id)} style={{ padding: "6px 12px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>Approve</button>
+                        <button onClick={() => rejectProposal(f.id)} style={{ padding: "6px 12px", background: "transparent", color: "#e05252", border: "1px solid rgba(224,82,82,0.2)", borderRadius: "6px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>Reject</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {featureProposals.length === 0 && (
+              <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "32px", textAlign: "center" }}>
+                <p style={{ fontSize: "14px", color: S.muted }}>No feature proposals yet — run the CTO Research agent to generate ideas</p>
+              </div>
+            )}
+
             <div>
-              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Feature Backlog</p>
+              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Feature Backlog (Static)</p>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", overflow: "hidden" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 60px 80px 100px", gap: "8px", padding: "10px 18px", borderBottom: `1px solid ${S.border}` }}>
                   <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: S.faint }}>Feature</span>
@@ -435,10 +621,26 @@ export default function CEODashboard() {
         )}
 
         {/* ===== AGENTS ===== */}
-        {section === "agents" && (
+        {section === "agents" && (() => {
+          const agentConfigs = [
+            { name: "CTO Research Agent", role: "Feature ideas and technical research", path: "/api/agents/cto/research", dbName: "CTO Agent" },
+            { name: "CMO Content Agent", role: "Social media content generation", path: "/api/agents/cmo/content", dbName: "CMO Agent" },
+            { name: "CFO Revenue Agent", role: "Revenue monitoring and metrics", path: "/api/agents/cfo/revenue", dbName: "CFO Agent" },
+            { name: "CPO Product Agent", role: "Competitor and market research", path: "/api/agents/cpo/research", dbName: "CPO Agent" },
+            { name: "Trend Spotter Agent", role: "Trending resale items detection", path: "/api/agents/trend-spotter", dbName: "Trend Spotter" },
+            { name: "Support Agent", role: "Customer support templates", path: "/api/agents/coo/support", dbName: "Support Agent" },
+          ]
+          return (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <button onClick={() => runAgent("All Agents", "/api/agents/run-all")} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer", alignSelf: "flex-start" }}>
+              {agentRunning ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Play size={14} />}
+              {agentRunning ? `Running ${agentRunning}...` : "Run All Agents"}
+            </button>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {AGENTS.map((a, i) => (
+              {agentConfigs.map((a, i) => {
+                const lastActivity = dbActivity.find(act => act.agent_name === a.dbName)
+                const lastTime = lastActivity ? new Date(lastActivity.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never run"
+                return (
                 <div key={i} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
                     <div>
@@ -446,35 +648,40 @@ export default function CEODashboard() {
                       <p style={{ fontSize: "12px", color: S.muted }}>{a.role}</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: a.status === "Working" ? S.green : a.status === "Active" ? "#c9a84c" : S.faint, animation: a.status === "Working" ? "pulseGlow 2s ease infinite" : "none" }} />
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: a.status === "Working" ? S.green : a.status === "Active" ? "#c9a84c" : S.faint }}>{a.status}</span>
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: lastActivity ? S.green : S.faint }} />
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: lastActivity ? S.green : S.faint }}>{lastActivity ? "Active" : "Idle"}</span>
                     </div>
                   </div>
-                  <p style={{ fontSize: "13px", color: S.muted, marginBottom: "12px", lineHeight: 1.4 }}>{a.current}</p>
+                  <p style={{ fontSize: "13px", color: S.muted, marginBottom: "12px", lineHeight: 1.4 }}>{lastActivity ? lastActivity.action : "No activity yet — click Run Now"}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "11px", color: S.faint }}>Last active: {a.lastActive} · {a.actions} actions</span>
-                    <button style={{ display: "flex", alignItems: "center", gap: "4px", padding: "6px 12px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
-                      <Play size={12} /> Run
+                    <span style={{ fontSize: "11px", color: S.faint }}>Last: {lastTime}</span>
+                    <button onClick={() => runAgent(a.name, a.path)} disabled={!!agentRunning} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "6px 12px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                      {agentRunning === a.name ? <Loader2 size={12} style={{ animation: "spin 0.6s linear infinite" }} /> : <Play size={12} />} Run
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             <div>
-              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Agent Activity Log</p>
+              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Activity Log</p>
               <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", overflow: "hidden" }}>
-                {ACTIVITY_FEED.concat(ACTIVITY_FEED).slice(0, 20).map((a, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", borderBottom: i < 19 ? `1px solid ${S.border}` : "none" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", width: "60px", flexShrink: 0 }}>{a.agent}</span>
+                {dbActivity.length > 0 ? dbActivity.map((a, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", borderBottom: i < dbActivity.length - 1 ? `1px solid ${S.border}` : "none" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", width: "80px", flexShrink: 0 }}>{a.agent_name}</span>
                     <p style={{ fontSize: "13px", flex: 1, color: S.text }}>{a.action}</p>
-                    <span style={{ fontSize: "11px", color: S.faint, flexShrink: 0 }}>{a.time}</span>
+                    <span style={{ fontSize: "11px", color: S.faint, flexShrink: 0 }}>{new Date(a.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
                   </div>
-                ))}
+                )) : (
+                  <div style={{ padding: "24px", textAlign: "center" }}>
+                    <p style={{ fontSize: "13px", color: S.muted }}>No agent activity yet — run an agent to see logs here</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
       </main>
     </div>
   )

@@ -1,0 +1,10 @@
+{
+  "crons": [
+    { "path": "/api/agents/cto/research", "schedule": "0 2 * * *" },
+    { "path": "/api/agents/cmo/content", "schedule": "0 6 * * *" },
+    { "path": "/api/agents/cfo/revenue", "schedule": "0 8 * * *" },
+    { "path": "/api/agents/cpo/research", "schedule": "0 3 * * 1" },
+    { "path": "/api/agents/trend-spotter", "schedule": "0 7 * * *" },
+    { "path": "/api/agents/morning-briefing", "schedule": "0 8 * * *" }
+  ]
+}
