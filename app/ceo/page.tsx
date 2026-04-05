@@ -88,7 +88,7 @@ const AGENTS = [
   { name: "Finance Agent", role: "Revenue & Billing", status: "Sleeping" as const, lastActive: "8 hr ago", current: "Scheduled: Weekly revenue reconciliation", actions: 12 },
 ]
 
-type Section = "overview" | "revenue" | "marketing" | "product" | "operations" | "agents"
+type Section = "overview" | "revenue" | "marketing" | "product" | "operations" | "agents" | "office"
 
 const NAV: { key: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -117,7 +117,7 @@ export default function CEODashboard() {
   const [toast, setToast] = useState<string | null>(null)
   // Real metrics
   const [metrics, setMetrics] = useState({ totalUsers: 0, proUsers: 0, bizUsers: 0, freeUsers: 0, scansToday: 0, mrr: 0, newUsersToday: 0, pendingCount: 0 })
-  const [marketingContent, setMarketingContent] = useState<Array<{ id: string; title: string; description: string; agent_name: string; impact_rating: string; complexity: string }>>([])
+  const [marketingContent, setMarketingContent] = useState<Array<{ id: string; title: string; description: string; agent_name: string; impact_rating: string; complexity: string; content?: { platform?: string } }>>([])
   const [featureProposals, setFeatureProposals] = useState<Array<{ id: string; title: string; description: string; impact_rating: string; complexity: string }>>([])
 
   const loadDashboardData = useCallback(async () => {
@@ -472,28 +472,30 @@ export default function CEODashboard() {
                 </div>
               ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {marketingContent.map(c => (
+                {marketingContent.map(c => {
+                  const plat = c.content?.platform || "Content"
+                  return (
                   <div key={c.id} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                       <div>
                         <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "4px" }}>
-                          <span style={{ padding: "2px 8px", fontSize: "10px", fontWeight: 600, borderRadius: "50px", background: c.platform === "TikTok" ? "rgba(82,183,136,0.1)" : c.platform === "Instagram" ? "rgba(193,53,132,0.1)" : "rgba(255,87,34,0.1)", color: c.platform === "TikTok" ? S.green : c.platform === "Instagram" ? "#c13584" : "#ff5722" }}>{c.platform}</span>
-                          <span style={{ fontSize: "11px", color: S.faint }}>{c.type}</span>
+                          <span style={{ padding: "2px 8px", fontSize: "10px", fontWeight: 600, borderRadius: "50px", background: plat === "TikTok" ? "rgba(82,183,136,0.1)" : plat === "Instagram" ? "rgba(193,53,132,0.1)" : "rgba(255,87,34,0.1)", color: plat === "TikTok" ? S.green : plat === "Instagram" ? "#c13584" : "#ff5722" }}>{plat}</span>
                         </div>
                         <p style={{ fontSize: "15px", fontWeight: 700 }}>{c.title}</p>
                       </div>
                     </div>
-                    <p style={{ fontSize: "13px", color: S.muted, lineHeight: 1.6, marginBottom: "14px", background: S.bg, padding: "12px", borderRadius: "8px" }}>{c.content}</p>
+                    <p style={{ fontSize: "13px", color: S.muted, lineHeight: 1.6, marginBottom: "14px", background: S.bg, padding: "12px", borderRadius: "8px", whiteSpace: "pre-line" }}>{c.description?.slice(0, 400)}</p>
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <button onClick={() => setContent(prev => prev.filter(x => x.id !== c.id))} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
-                        <Check size={14} /> Approve & Post
+                      <button onClick={() => approveProposal(c.id)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                        <Check size={14} /> Approve
                       </button>
-                      <button onClick={() => setContent(prev => prev.filter(x => x.id !== c.id))} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: "#e05252", border: "1px solid rgba(224,82,82,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
+                      <button onClick={() => rejectProposal(c.id)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: "#e05252", border: "1px solid rgba(224,82,82,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
                         <X size={14} /> Reject
                       </button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
                 {content.length === 0 && <p style={{ fontSize: "14px", color: S.muted, padding: "20px 0" }}>Content queue is empty.</p>}
               </div>
               )}
