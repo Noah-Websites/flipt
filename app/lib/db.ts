@@ -35,13 +35,11 @@ export async function saveScan(userId: string, scan: {
 
   // Increment scan count
   if (!error) {
-    await supabase.rpc("increment_scan_count", { uid: userId }).catch(() => {
-      // Fallback if RPC doesn't exist
-      supabase.from("profiles").update({
-        scan_count: undefined, // Will be handled by trigger
-        monthly_scan_count: undefined,
-      }).eq("id", userId)
-    })
+    try {
+      await supabase.rpc("increment_scan_count", { uid: userId })
+    } catch {
+      // RPC may not exist yet — ignore
+    }
   }
 
   return { data, error }
@@ -158,11 +156,13 @@ export async function createFeedPost(userId: string, post: {
 }
 
 export async function likeFeedPost(postId: string) {
-  const { error } = await supabase.rpc("increment_likes", { post_id: postId }).catch(() => {
-    // Fallback
-    return supabase.from("feed_posts").update({ likes: undefined }).eq("id", postId)
-  })
-  return { error }
+  try {
+    const { error } = await supabase.rpc("increment_likes", { post_id: postId })
+    return { error }
+  } catch {
+    // RPC may not exist yet — ignore
+    return { error: null }
+  }
 }
 
 // ===== FOLLOWS =====
