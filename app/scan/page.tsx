@@ -39,8 +39,12 @@ export default function Scan() {
   const [imageData, setImageData] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<string>("image/jpeg")
   const [loading, setLoading] = useState(false)
-  const [scanStep, setScanStep] = useState(0) // 0-4 for progress
+  const [scanStep, setScanStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [manualName, setManualName] = useState("")
+  const [fallbackTips, setFallbackTips] = useState<string[]>([])
+  const [manualLoading, setManualLoading] = useState(false)
   const [scanCount, setScanCount] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const [condition, setCondition] = useState<string>("Good")
@@ -163,8 +167,12 @@ export default function Scan() {
       const data = await res.json()
 
       // Handle fallback / failure cases
-      if (data.fallback || (!res.ok && data.error)) {
-        throw new Error(data.error || "Could not analyze this image. Please try again.")
+      if (data.fallback) {
+        setFallbackTips(data.tips || [])
+        setShowManualEntry(true)
+        setError(data.error || "We had trouble with this image.")
+        setLoading(false); setScanStep(0)
+        return
       }
       if (data.error && !data.item) {
         throw new Error(data.error)
@@ -211,11 +219,43 @@ export default function Scan() {
       if (preview) sessionStorage.setItem("flipt-image", preview)
       router.push("/results")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+      const msg = err instanceof Error ? err.message : "Something went wrong."
+      // Detect ad-blocker interference
+      if (err instanceof TypeError && (msg.includes("Failed to fetch") || msg.includes("Load failed") || msg.includes("NetworkError"))) {
+        setError("Scan failed — your ad blocker may be interfering. Try disabling it for this site, or enter the item name manually.")
+        setShowManualEntry(true)
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
       setScanStep(0)
     }
+  }
+
+  async function handleManualIdentify() {
+    if (!manualName.trim()) return
+    setManualLoading(true)
+    setError(null)
+    try {
+      const allImages = imageData ? [{ data: imageData, mediaType }] : []
+      const res = await fetch("/api/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: allImages.length > 0 ? allImages : undefined, image: imageData, mediaType, condition, correctedName: manualName }),
+      })
+      const data = await res.json()
+      if (data.item || data.valueLow) {
+        sessionStorage.setItem("flipt-result", JSON.stringify(data))
+        if (preview) sessionStorage.setItem("flipt-image", preview)
+        router.push("/results")
+      } else {
+        setError("Could not get pricing. Please try a more specific item name.")
+      }
+    } catch {
+      setError("Something went wrong. Please try again.")
+    }
+    setManualLoading(false)
   }
 
   async function handleBulkScan() {
@@ -510,11 +550,40 @@ export default function Scan() {
           </div>
         </div>
 
-        {error && (
+        {error && !showManualEntry && (
           <div style={{ margin: "0 24px", padding: "16px 20px", background: "rgba(214,69,69,0.1)", borderRadius: "12px", border: "1px solid rgba(214,69,69,0.2)", maxWidth: "340px", textAlign: "center" }}>
             <p style={{ color: "#e74c3c", fontSize: "13px", fontWeight: 500, marginBottom: "10px" }}>{error}</p>
-            <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary" style={{ fontSize: "12px" }}>
-              Try Again
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+              <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary" style={{ fontSize: "12px" }}>Try Again</button>
+              <button onClick={() => setShowManualEntry(true)} className="btn-sm ghost" style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.15)" }}>Enter Manually</button>
+            </div>
+          </div>
+        )}
+
+        {showManualEntry && (
+          <div style={{ margin: "0 24px", padding: "20px", background: "var(--surface)", borderRadius: "14px", border: "1px solid var(--border)", maxWidth: "340px" }}>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#fff", marginBottom: "4px" }}>What is this item?</p>
+            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "12px" }}>Type the item name and we will look up pricing for you.</p>
+            {fallbackTips.length > 0 && (
+              <div style={{ marginBottom: "12px", padding: "10px", background: "rgba(255,255,255,0.04)", borderRadius: "8px" }}>
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginBottom: "4px" }}>Tips for next time:</p>
+                {fallbackTips.map((tip, i) => <p key={i} style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>• {tip}</p>)}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                value={manualName} onChange={e => setManualName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleManualIdentify()}
+                placeholder="e.g. KitchenAid Stand Mixer"
+                style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff", fontFamily: "var(--font-body)", fontSize: "14px" }}
+                autoFocus
+              />
+              <button onClick={handleManualIdentify} disabled={manualLoading || !manualName.trim()} className="btn-sm primary" style={{ flexShrink: 0 }}>
+                {manualLoading ? "..." : "Go"}
+              </button>
+            </div>
+            <button onClick={() => { setShowManualEntry(false); setError(null); setFallbackTips([]) }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "12px", fontFamily: "var(--font-body)", cursor: "pointer", marginTop: "8px" }}>
+              Cancel
             </button>
           </div>
         )}
