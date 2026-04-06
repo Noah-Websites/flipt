@@ -40,28 +40,45 @@ function extractJSON(text: string): Record<string, unknown> | null {
   return null
 }
 
+function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) }
+
 async function attemptScan(
   imageBlocks: Anthropic.Messages.ImageBlockParam[],
   prompt: string,
   maxTokens: number,
   timeoutMs: number,
 ): Promise<Record<string, unknown> | null> {
-  try {
-    const apiCall = client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: [...imageBlocks, { type: "text" as const, text: prompt }] }],
-    })
-    const msg = await withTimeout(apiCall, timeoutMs)
-    const rawText = msg.content[0].type === "text" ? msg.content[0].text : ""
-    const result = extractJSON(rawText)
-    if (result && (result.item || result.item_name)) return result
-    console.error("[Scan] Attempt returned no item. Raw:", rawText.slice(0, 200))
-    return null
-  } catch (err) {
-    console.error("[Scan] Attempt failed:", err instanceof Error ? err.message : "unknown")
-    return null
+  const MAX_RETRIES = 3
+  const RETRY_DELAY = 3000
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const apiCall = client.messages.create({
+        model: "claude-opus-4-5",
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: [...imageBlocks, { type: "text" as const, text: prompt }] }],
+      })
+      const msg = await withTimeout(apiCall, timeoutMs)
+      const rawText = msg.content[0].type === "text" ? msg.content[0].text : ""
+      const result = extractJSON(rawText)
+      if (result && (result.item || result.item_name)) return result
+      console.error("[Scan] Attempt returned no item. Raw:", rawText.slice(0, 200))
+      return null
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "unknown"
+      const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("overloaded")
+
+      if (isRateLimit && attempt < MAX_RETRIES) {
+        console.log(`[Scan] Rate limited, retrying in ${RETRY_DELAY}ms (attempt ${attempt + 1}/${MAX_RETRIES})...`)
+        await sleep(RETRY_DELAY)
+        continue
+      }
+
+      console.error("[Scan] Attempt failed:", msg)
+      return null
+    }
   }
+  return null
 }
 
 export async function POST(request: Request) {
