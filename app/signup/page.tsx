@@ -229,6 +229,13 @@ export default function Signup() {
           Continue as Guest
         </button>
 
+        {/* Social proof */}
+        <div style={{ marginTop: "16px", padding: "12px 16px", background: "var(--surface-alt)", borderRadius: "12px", maxWidth: "300px", textAlign: "center" }}>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+            Join 10,000+ Canadians turning clutter into cash with Flipt
+          </p>
+        </div>
+
         <p style={{ fontSize: "11px", color: "var(--text-faint)", maxWidth: "280px", lineHeight: 1.5, marginTop: "8px" }}>
           By continuing, you agree to our{" "}
           <a href="/terms" style={{ color: "var(--text-faint)", textDecoration: "underline" }}>Terms of Service</a>{" "}

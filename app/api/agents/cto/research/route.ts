@@ -3,7 +3,8 @@ import { askClaude, logActivity, saveProposal } from "../../../../lib/agents"
 export async function GET() {
   try {
     const raw = await askClaude(
-      `You are the CTO of Flipt, an AI-powered resale pricing app for Canadians. Generate 5 specific feature improvement ideas. For each return JSON with: title, description, problem_it_solves, complexity (Simple/Medium/Complex), impact (Low/Medium/High), build_hours (number). Focus on practical improvements a solo developer could build. Current features: AI item scanning, price comparison, marketplace, feed, closet, business mode, subscriptions. Return a JSON array only, no markdown.`
+      `You are the CTO of Flipt, an AI-powered resale pricing app for Canadians. Generate 5 specific feature improvement ideas. For each return JSON with: title, description, problem_it_solves, complexity (Simple/Medium/Complex), impact (Low/Medium/High), build_hours (number). Focus on practical improvements a solo developer could build. Current features: AI item scanning, price comparison, marketplace, feed, closet, business mode, subscriptions. Return a JSON array only, no markdown.`,
+      2000
     )
     let proposals: Array<{ title: string; description: string; problem_it_solves?: string; complexity: string; impact: string; build_hours?: number }> = []
     try { proposals = JSON.parse(raw) } catch { return Response.json({ error: "Failed to parse AI response" }, { status: 500 }) }

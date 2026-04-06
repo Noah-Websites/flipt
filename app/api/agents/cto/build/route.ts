@@ -9,7 +9,8 @@ export async function POST(request: Request) {
     if (!proposal) return Response.json({ error: "Proposal not found" }, { status: 404 })
 
     const raw = await askClaude(
-      `You are the CTO building this feature for Flipt:\n\nTitle: ${proposal.title}\nDescription: ${proposal.description}\n\nCreate a detailed implementation plan. Return JSON only with: approach (string), files (array of file paths), steps (array of step descriptions), testing (string), estimated_hours (number).`
+      `You are the CTO building this feature for Flipt:\n\nTitle: ${proposal.title}\nDescription: ${proposal.description}\n\nCreate a detailed implementation plan. Return JSON only with: approach (string), files (array of file paths), steps (array of step descriptions), testing (string), estimated_hours (number).`,
+      1500
     )
     let plan: Record<string, unknown> = {}
     try { plan = JSON.parse(raw) } catch { plan = { approach: raw, files: [], steps: [], testing: "Manual", estimated_hours: 8 } }

@@ -5,7 +5,8 @@ export async function GET() {
     const raw = await askClaude(
       `You are the CPO of Flipt, a Canadian resale pricing app. Analyze competitors (eBay, Mercari, OfferUp, Decluttr, Poshmark). Return JSON only:
 {"competitor_features":[{"feature":"name","competitor":"who has it","description":"what it does","opportunity":"how Flipt could do it better"}],"market_gaps":[{"gap":"name","description":"what nobody does","size":"Small/Medium/Large","approach":"how Flipt fills this"}]}
-Include 3 competitor features and 3 market gaps.`
+Include 3 competitor features and 3 market gaps.`,
+      1500
     )
     let findings: { competitor_features?: Array<{ feature: string; competitor: string; description: string; opportunity: string }>; market_gaps?: Array<{ gap: string; description: string; size: string; approach: string }> } = {}
     try { findings = JSON.parse(raw) } catch { findings = {} }

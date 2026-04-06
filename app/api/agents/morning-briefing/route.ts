@@ -31,7 +31,8 @@ MRR: $${mrr.toFixed(2)} CAD, Total users: ${all.length}, Paid: ${proCount + bizC
 New users today: ${newToday}, Scans today: ${scansToday || 0}
 Pending proposals: ${pendingCount || 0}
 Top trending item: ${topTrend}
-Format: Start "Good morning Noah." then sections REVENUE, TRENDING, AWAITING APPROVAL, TOP PRIORITY.`
+Format: Start "Good morning Noah." then sections REVENUE, TRENDING, AWAITING APPROVAL, TOP PRIORITY.`,
+      800
     )
 
     await logActivity("Morning Briefing", "Daily briefing generated", briefing, "morning_briefing")

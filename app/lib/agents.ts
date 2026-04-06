@@ -6,10 +6,10 @@ const anthropic = new Anthropic()
 // Export the admin client for direct use in agent routes
 export const supabase = supabaseAdmin
 
-export async function askClaude(prompt: string): Promise<string> {
+export async function askClaude(prompt: string, maxTokens = 1500): Promise<string> {
   const msg = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 2000,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: maxTokens,
     messages: [{ role: "user", content: prompt }],
   })
   return msg.content[0].type === "text" ? msg.content[0].text : ""

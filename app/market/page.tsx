@@ -29,24 +29,31 @@ export default function Market() {
   const [refreshing, setRefreshing] = useState(false)
 
   const loadTrending = useCallback(async () => {
-    // Load latest trending data from agent_activity
-    const { data } = await supabase
-      .from("agent_activity")
-      .select("details, created_at")
-      .eq("agent_name", "Trend Spotter Agent")
-      .like("action", "Market report:%")
-      .order("created_at", { ascending: false })
-      .limit(1)
+    // Set a 2s max for loading state
+    const timer = setTimeout(() => setLoading(false), 2000)
 
-    if (data && data[0]?.details) {
-      try {
-        const items = JSON.parse(data[0].details)
-        if (Array.isArray(items)) {
-          setTrending(items)
-          setLastUpdated(data[0].created_at)
-        }
-      } catch { /* parse error */ }
-    }
+    try {
+      // Load latest trending data from agent_activity
+      const { data } = await supabase
+        .from("agent_activity")
+        .select("details, created_at")
+        .eq("agent_name", "Trend Spotter Agent")
+        .like("action", "Market report:%")
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      if (data && data[0]?.details) {
+        try {
+          const items = JSON.parse(data[0].details)
+          if (Array.isArray(items)) {
+            setTrending(items)
+            setLastUpdated(data[0].created_at)
+          }
+        } catch { /* parse error */ }
+      }
+    } catch { /* supabase error - page still renders */ }
+
+    clearTimeout(timer)
     setLoading(false)
   }, [])
 
@@ -57,13 +64,7 @@ export default function Market() {
     loadTrending()
   }, [loadTrending])
 
-  // Auto-trigger trend spotter if no data
-  useEffect(() => {
-    if (!loading && trending.length === 0 && mounted) {
-      refreshData()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, mounted])
+  // No auto-trigger — user clicks Refresh manually
 
   async function refreshData() {
     setRefreshing(true)

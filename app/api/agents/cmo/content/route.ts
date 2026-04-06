@@ -5,7 +5,8 @@ export async function GET() {
     const raw = await askClaude(
       `You are the CMO of Flipt, a Canadian AI resale pricing app. Generate a week of social media content. Return JSON only:
 {"tiktok":[{"title":"string","hook":"0-3s","body":"3-20s","cta":"20-30s","hashtags":["10 tags"]}],"instagram":[{"title":"string","caption":"full caption","hashtags":["10 tags"]}],"reddit":[{"title":"string","subreddit":"r/...","body":"full text"}]}
-Generate 3 TikTok, 3 Instagram, 2 Reddit. Make content authentic, helpful, not salesy.`
+Generate 3 TikTok, 3 Instagram, 2 Reddit. Make content authentic, helpful, not salesy.`,
+      2000
     )
     let content: { tiktok?: Array<{ title: string; hook: string; body: string; cta: string; hashtags: string[] }>; instagram?: Array<{ title: string; caption: string; hashtags: string[] }>; reddit?: Array<{ title: string; subreddit: string; body: string }> } = {}
     try { content = JSON.parse(raw) } catch { return Response.json({ error: "Failed to parse AI response" }, { status: 500 }) }

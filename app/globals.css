@@ -78,7 +78,7 @@ h3 { font-size: 22px; }
 
 /* ===== Floating Nav ===== */
 .bottom-nav {
-  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 100;
+  position: fixed; bottom: max(12px, env(safe-area-inset-bottom, 12px)); left: 50%; transform: translateX(-50%); z-index: 100;
   display: flex; align-items: center; gap: 2px; height: 60px; padding: 0 6px;
   background: rgba(17,20,17,0.92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(82,183,136,0.08); border-radius: 50px;
