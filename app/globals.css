@@ -31,8 +31,18 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; /* Lenis handles smooth scroll */ }
 a { text-decoration: none; color: inherit; }
+
+/* Micro interactions */
+button { transition: transform 0.15s ease; }
+button:active { transform: scale(0.97); }
+input:focus, textarea:focus { box-shadow: 0 0 0 2px var(--green-accent); transition: box-shadow 0.2s ease; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
 
 body {
   background: var(--bg);
@@ -57,6 +67,8 @@ h3 { font-size: 22px; }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 20px rgba(45,106,79,0.25); } 50% { box-shadow: 0 0 40px rgba(45,106,79,0.5); } }
+@keyframes floatUp { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.6; } 90% { opacity: 0.6; } 100% { transform: translateY(-100vh) translateX(20px); opacity: 0; } }
+@keyframes gradientShift { 0% { background: radial-gradient(ellipse at 50% 40%, #0f2a18 0%, #0a0d0a 70%); } 100% { background: radial-gradient(ellipse at 50% 60%, #0a1a0f 0%, #0a0d0a 70%); } }
 @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
 @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 @keyframes slideInRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }

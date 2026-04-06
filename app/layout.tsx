@@ -6,6 +6,7 @@ import AppShell from "./components/AppShell"
 import BottomNav from "./components/BottomNav"
 import Footer from "./components/Footer"
 import CurrencyProvider from "./components/CurrencyProvider"
+import SmoothScroll from "./components/SmoothScroll"
 
 export const metadata: Metadata = {
   title: "Flipt — Turn Clutter into Cash",
@@ -29,6 +30,7 @@ export default function RootLayout({
           <AuthProvider>
           <CurrencyProvider>
           <AppShell>
+            <SmoothScroll />
             {children}
             <Footer />
             <BottomNav />

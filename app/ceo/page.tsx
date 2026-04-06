@@ -20,26 +20,12 @@ const MRR_DATA = Array.from({ length: 30 }, (_, i) => ({
   mrr: 1800 + Math.floor(i * 18 + Math.random() * 40),
 }))
 
-const PROPOSALS = [
-  { id: 1, agent: "CTO Agent", title: "Add search bar to scan history", desc: "Users frequently scroll through long history lists. A search/filter would reduce time to find items by 60%.", impact: "High", complexity: "Simple" },
-  { id: 2, agent: "CMO Agent", title: "Post TikTok about hidden gem Pokemon cards", desc: "Script ready: '3 Pokemon cards hiding in your closet worth over $500'. Trending audio selected. Target: 50K views.", impact: "Medium", complexity: "Ready" },
-  { id: 3, agent: "CPO Agent", title: "Add price alert notifications", desc: "Push notifications when watched items drop in price. Poshmark and eBay both shipped this last week. We need parity.", impact: "High", complexity: "Medium" },
-]
+// No more hardcoded proposals — all data comes from Supabase
 
-const ACTIVITY_FEED = [
-  { time: "2 min ago", agent: "CTO", action: "Deployed scan history search bar to staging" },
-  { time: "8 min ago", agent: "CMO", action: "Scheduled Instagram carousel post for 7PM EST" },
-  { time: "15 min ago", agent: "CPO", action: "Analyzed 47 user feedback submissions from last week" },
-  { time: "22 min ago", agent: "CTO", action: "Fixed image loading issue on marketplace page" },
-  { time: "35 min ago", agent: "CMO", action: "Generated 5 TikTok script variations for A/B testing" },
-  { time: "1 hr ago", agent: "Support", action: "Resolved 3 support tickets about scan accuracy" },
-  { time: "1 hr ago", agent: "CPO", action: "Updated feature backlog priorities based on user data" },
-  { time: "2 hr ago", agent: "CTO", action: "Optimized API response time by 23%" },
-  { time: "3 hr ago", agent: "CMO", action: "Analyzed competitor Collectr's new pricing page" },
-  { time: "4 hr ago", agent: "CPO", action: "Created wireframes for bulk scan improvements" },
-]
+// Removed: ACTIVITY_FEED — all activity comes from Supabase agent_activity table
 
 const TRANSACTIONS = [
+  // Will be replaced with real Stripe data in future
   { user: "sarah.m@gmail.com", plan: "Pro Monthly", amount: 5.99, time: "12 min ago" },
   { user: "james.t@outlook.com", plan: "Business Yearly", amount: 119.99, time: "34 min ago" },
   { user: "emma.k@yahoo.com", plan: "Pro Yearly", amount: 47.99, time: "1 hr ago" },
@@ -47,13 +33,7 @@ const TRANSACTIONS = [
   { user: "lisa.c@icloud.com", plan: "Business Monthly", amount: 14.99, time: "3 hr ago" },
 ]
 
-const CONTENT_QUEUE = [
-  { id: 1, platform: "TikTok", title: "3 Pokemon cards worth $500+ in your closet", type: "Video Script", status: "Awaiting Approval", content: "Hook: 'You probably have $500 sitting in a shoebox right now.' Show 3 cards: 1st Ed Charizard ($420), Holographic Mewtwo ($85), Pikachu Illustrator ($5000). CTA: 'Scan yours free with Flipt.'" },
-  { id: 2, platform: "TikTok", title: "I scanned my entire closet and made $2,400", type: "Video Script", status: "Awaiting Approval", content: "Show scanning each item with Flipt. Reveal total value. Show listing process. End with cash in hand." },
-  { id: 3, platform: "TikTok", title: "Things in your kitchen worth more than you think", type: "Video Script", status: "Awaiting Approval", content: "KitchenAid mixer ($165), Le Creuset ($180), Vitamix ($200). 'Your kitchen is a goldmine.'" },
-  { id: 4, platform: "Instagram", title: "Spring cleaning carousel - 10 items to scan", type: "Carousel", status: "Awaiting Approval", content: "10 slides: winter jacket, old phone, vintage lamp, gaming console, designer bag, running shoes, kitchen appliances, books, sports gear, furniture." },
-  { id: 5, platform: "Reddit", title: "I built an AI app that tells you what your stuff is worth", type: "Post", status: "Awaiting Approval", content: "r/SideProject post: 'Hey everyone, I'm Noah from Ottawa. Built Flipt to help people figure out what their stuff is worth using AI...'" },
-]
+// Removed: CONTENT_QUEUE — marketing content comes from Supabase agent_proposals table
 
 const FEATURES = [
   { name: "Search in scan history", source: "User Request", impact: 9, complexity: "Low", status: "In Progress" },
@@ -107,8 +87,7 @@ export default function CEODashboard() {
   const [pw, setPw] = useState("")
   const [pwError, setPwError] = useState(false)
   const [section, setSection] = useState<Section>("overview")
-  const [proposals, setProposals] = useState(PROPOSALS)
-  const [content, setContent] = useState(CONTENT_QUEUE)
+  // Removed: mock proposals and content state — using dbProposals and marketingContent from Supabase
   const [mounted, setMounted] = useState(false)
   const [dbProposals, setDbProposals] = useState<Array<{ id: string; agent_name: string; title: string; description: string; impact_rating: string; complexity: string; proposal_type: string; status: string; content: unknown }>>([])
   const [dbActivity, setDbActivity] = useState<Array<{ agent_name: string; action: string; created_at: string }>>([])
@@ -341,36 +320,12 @@ export default function CEODashboard() {
               </div>
             )}
 
-            {/* Mock proposals (fallback) */}
-            <div>
-              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "14px" }}>Awaiting Your Approval</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {proposals.map(p => (
-                  <div key={p.id} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "18px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                      <div>
-                        <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.agent}</span>
-                        <p style={{ fontSize: "16px", fontWeight: 700, marginTop: "2px" }}>{p.title}</p>
-                      </div>
-                      <div style={{ display: "flex", gap: "4px" }}>
-                        <span style={{ padding: "3px 10px", fontSize: "11px", fontWeight: 600, borderRadius: "50px", background: p.impact === "High" ? "rgba(82,183,136,0.1)" : "rgba(201,168,76,0.1)", color: p.impact === "High" ? S.green : "#c9a84c" }}>{p.impact} Impact</span>
-                        <span style={{ padding: "3px 10px", fontSize: "11px", fontWeight: 600, borderRadius: "50px", background: `${S.bg}`, color: S.muted }}>{p.complexity}</span>
-                      </div>
-                    </div>
-                    <p style={{ fontSize: "14px", color: S.muted, lineHeight: 1.5, marginBottom: "14px" }}>{p.desc}</p>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button onClick={() => setProposals(prev => prev.filter(x => x.id !== p.id))} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: S.greenDark, color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
-                        <Check size={14} /> Approve
-                      </button>
-                      <button onClick={() => setProposals(prev => prev.filter(x => x.id !== p.id))} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "transparent", color: "#e05252", border: "1px solid rgba(224,82,82,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, fontFamily: "var(--font-body)", cursor: "pointer" }}>
-                        <X size={14} /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {proposals.length === 0 && <p style={{ fontSize: "14px", color: S.muted, padding: "20px 0" }}>All caught up. No pending proposals.</p>}
+            {/* Empty state when no proposals */}
+            {dbProposals.length === 0 && (
+              <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: "14px", padding: "32px", textAlign: "center" }}>
+                <p style={{ fontSize: "14px", color: S.muted }}>No pending proposals. Run agents to generate new ideas.</p>
               </div>
-            </div>
+            )}
 
             {/* Real Activity from DB */}
             <div>
@@ -382,13 +337,11 @@ export default function CEODashboard() {
                     <p style={{ fontSize: "14px", flex: 1 }}>{a.action}</p>
                     <span style={{ fontSize: "11px", color: S.faint, flexShrink: 0 }}>{new Date(a.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
                   </div>
-                )) : ACTIVITY_FEED.map((a, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 18px", borderBottom: i < ACTIVITY_FEED.length - 1 ? `1px solid ${S.border}` : "none" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 600, color: S.green, textTransform: "uppercase", width: "60px", flexShrink: 0 }}>{a.agent}</span>
-                    <p style={{ fontSize: "14px", flex: 1 }}>{a.action}</p>
-                    <span style={{ fontSize: "11px", color: S.faint, flexShrink: 0 }}>{a.time}</span>
+                )) : (
+                  <div style={{ padding: "24px", textAlign: "center" }}>
+                    <p style={{ fontSize: "13px", color: S.muted }}>No agent activity yet. Run agents to see activity here.</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -496,7 +449,7 @@ export default function CEODashboard() {
                   </div>
                   )
                 })}
-                {content.length === 0 && <p style={{ fontSize: "14px", color: S.muted, padding: "20px 0" }}>Content queue is empty.</p>}
+                {/* Empty handled above */}
               </div>
               )}
             </div>
