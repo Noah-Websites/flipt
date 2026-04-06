@@ -1,70 +1,81 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { TrendingUp, Lightbulb, Check, MapPin, RefreshCw, Flame } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { TrendingUp, Lightbulb, Check, RefreshCw, Loader2 } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn, CountUp } from "../components/Motion"
-import { getMarketEmail, setMarketEmail, getCloset } from "../lib/storage"
+import { getMarketEmail, setMarketEmail } from "../lib/storage"
+import { supabase } from "../lib/supabase"
 
-const TRENDING = [
-  { name: "AirPods Pro 2nd Gen", avgPrice: 145, change: "+12%", hot: true },
-  { name: "Lululemon Align Leggings", avgPrice: 62, change: "+8%", hot: true },
-  { name: "Nintendo Switch OLED", avgPrice: 265, change: "+5%", hot: false },
-  { name: "Canada Goose Jacket", avgPrice: 420, change: "+18%", hot: true },
-  { name: "Dyson V15 Detect", avgPrice: 380, change: "+3%", hot: false },
-]
+interface TrendItem {
+  name: string; why_trending: string; avg_price: number; best_platform: string; demand: string; price_change: string
+}
 
-const HOUSEHOLD_PRICES = [
-  { item: "Used iPhone 14", low: 350, high: 500 },
-  { item: "KitchenAid Stand Mixer", low: 120, high: 200 },
-  { item: "IKEA Kallax Shelf", low: 30, high: 60 },
-  { item: "Peloton Bike", low: 600, high: 900 },
-  { item: "Herman Miller Chair", low: 400, high: 700 },
-]
-
-const PLATFORMS = [
-  { name: "Facebook Marketplace", note: "Best for furniture & local pickup", volume: "High" },
-  { name: "eBay", note: "Best for electronics & collectibles", volume: "High" },
-  { name: "Kijiji", note: "Best for Canadian sellers, low fees", volume: "Medium" },
-  { name: "Poshmark", note: "Best for clothing & accessories", volume: "Medium" },
-]
-
-interface HotItem {
-  name: string; category: string; avgPrice: number; demandLevel: "Low" | "Medium" | "High"
-  priceChange: string; whyTrending: string
+function timeAgo(iso: string) {
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (min < 1) return "just now"
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  return `${Math.floor(hr / 24)}d ago`
 }
 
 export default function Market() {
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [hotItems, setHotItems] = useState<HotItem[]>([])
-  const [hotLoading, setHotLoading] = useState(false)
-  const [hotLastUpdated, setHotLastUpdated] = useState<string | null>(null)
-  const [closetItems, setClosetItems] = useState<string[]>([])
+  const [trending, setTrending] = useState<TrendItem[]>([])
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadTrending = useCallback(async () => {
+    // Load latest trending data from agent_activity
+    const { data } = await supabase
+      .from("agent_activity")
+      .select("details, created_at")
+      .eq("agent_name", "Trend Spotter Agent")
+      .like("action", "Market report:%")
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (data && data[0]?.details) {
+      try {
+        const items = JSON.parse(data[0].details)
+        if (Array.isArray(items)) {
+          setTrending(items)
+          setLastUpdated(data[0].created_at)
+        }
+      } catch { /* parse error */ }
+    }
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
     const saved = getMarketEmail()
     if (saved) setSubscribed(true)
-    setClosetItems(getCloset().map(c => c.item.toLowerCase()))
     setMounted(true)
-  }, [])
+    loadTrending()
+  }, [loadTrending])
 
-  async function loadHotItems() {
-    setHotLoading(true)
+  // Auto-trigger trend spotter if no data
+  useEffect(() => {
+    if (!loading && trending.length === 0 && mounted) {
+      refreshData()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, mounted])
+
+  async function refreshData() {
+    setRefreshing(true)
     try {
-      const res = await fetch("/api/hot-items")
+      const res = await fetch("/api/agents/trend-spotter")
       const data = await res.json()
       if (data.items) {
-        setHotItems(data.items)
-        setHotLastUpdated(data.lastUpdated || "just now")
+        setTrending(data.items)
+        setLastUpdated(new Date().toISOString())
       }
     } catch { /* ignore */ }
-    setHotLoading(false)
-  }
-
-  function hasInCloset(itemName: string) {
-    const q = itemName.toLowerCase()
-    return closetItems.some(c => c.includes(q) || q.includes(c))
+    setRefreshing(false)
   }
 
   function handleSubscribe() {
@@ -75,148 +86,125 @@ export default function Market() {
 
   if (!mounted) return null
 
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+
   return (
     <PageTransition>
-      <main style={{ minHeight: "100vh", background: "#0d0a08", padding: "0 0 120px" }}>
+      <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
 
-        {/* Newspaper masthead */}
+        {/* Masthead */}
         <div style={{ padding: "32px 20px 20px", borderBottom: "2px solid #c9a84c" }}>
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "6px" }}>Flipt Market</p>
-          <p style={{ fontSize: "12px", color: "#c9a84c", fontWeight: 500, letterSpacing: "0.04em" }}>Weekly Report · April 1–7, 2026 · Ottawa Edition</p>
+          <FadeUp>
+            <p style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" }}>Flipt Market</p>
+            <p style={{ fontSize: "12px", color: "#c9a84c", fontWeight: 500 }}>{dateStr}</p>
+          </FadeUp>
         </div>
 
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
-          {/* Hot Right Now in Ottawa */}
-          <div className="card" style={{ padding: "20px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Flame size={16} style={{ color: "var(--green-accent)" }} />
-                <p style={{ fontSize: "14px", fontWeight: "800" }}>Hot Right Now in Ottawa</p>
-              </div>
-              {hotLastUpdated && <span style={{ fontSize: "11px", color: "var(--text-faint)" }}>Updated {hotLastUpdated}</span>}
+          {/* Refresh controls */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ fontSize: "11px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Trending Items
+              </p>
+              {lastUpdated && <p style={{ fontSize: "10px", color: "var(--text-faint)" }}>Updated {timeAgo(lastUpdated)}</p>}
             </div>
+            <button
+              onClick={refreshData}
+              disabled={refreshing}
+              className="btn-sm ghost"
+              style={{ gap: "6px", fontSize: "11px" }}
+            >
+              {refreshing ? <Loader2 size={12} style={{ animation: "spin 0.6s linear infinite" }} /> : <RefreshCw size={12} />}
+              {refreshing ? "Fetching..." : "Refresh"}
+            </button>
+          </div>
 
-            {hotItems.length === 0 && !hotLoading && (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <MapPin size={24} style={{ color: "var(--text-faint)", margin: "0 auto 8px" }} />
-                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "12px" }}>AI-powered trending items in your city</p>
-                <button onClick={loadHotItems} className="btn-sm primary">Load Ottawa Trends</button>
-              </div>
-            )}
+          {/* Loading skeleton */}
+          {loading && trending.length === 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "14px" }} />
+              ))}
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", textAlign: "center", marginTop: "8px" }}>
+                Fetching live market data...
+              </p>
+            </div>
+          )}
 
-            {hotLoading && (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <span className="spinner" style={{ borderColor: "var(--border)", borderTopColor: "var(--green-accent)", width: "16px", height: "16px", borderWidth: "2px" }} />
-                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "8px" }}>Analyzing Ottawa market...</p>
-              </div>
-            )}
-
-            {hotItems.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {hotItems.map((item, i) => (
-                  <div key={i} className="hot-item-card">
-                    <div className="trending-rank">{i + 1}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: "14px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</p>
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px", flexWrap: "wrap" }}>
-                        <span className="platform-badge">{item.category}</span>
-                        <span className={`difficulty-pill ${item.demandLevel.toLowerCase()}`}>{item.demandLevel}</span>
-                        {hasInCloset(item.name) && <span className="difficulty-pill easy" style={{ fontSize: "10px" }}>In your closet</span>}
+          {/* Trending items - REAL DATA */}
+          {trending.length > 0 && (
+            <StaggerContainer stagger={0.1}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {trending.map((item, i) => (
+                  <StaggerItem key={i}>
+                    <div className="trending-item">
+                      <div className="trending-rank">{i + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "14px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</p>
+                        <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px", lineHeight: 1.4 }}>{item.why_trending}</p>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                          <span className="platform-badge">{item.best_platform}</span>
+                          <span className={`badge ${item.demand === "High" ? "green" : "gold"}`}>{item.demand}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <p style={{ fontSize: "18px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>
+                          ${item.avg_price}
+                        </p>
+                        {item.price_change && item.price_change !== "stable" && (
+                          <span style={{ fontSize: "11px", fontWeight: 600, color: item.price_change.startsWith("+") ? "var(--green-accent)" : "var(--red)" }}>
+                            {item.price_change}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <p className="gradient-text" style={{ fontSize: "16px", fontWeight: "800" }}>${item.avgPrice}</p>
-                      <span style={{ fontSize: "12px", fontWeight: "700", color: item.priceChange.startsWith("+") ? "var(--green-accent)" : "#d64545" }}>{item.priceChange}</span>
-                    </div>
-                  </div>
+                  </StaggerItem>
                 ))}
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
-                  <button onClick={loadHotItems} className="btn-sm ghost" style={{ padding: "4px 12px", fontSize: "11px", gap: "4px" }} disabled={hotLoading}>
-                    <RefreshCw size={12} /> Refresh
-                  </button>
-                </div>
               </div>
-            )}
-          </div>
+            </StaggerContainer>
+          )}
 
-          {/* Trending */}
-          <div>
-            <p className="card-label" style={{ paddingLeft: "4px", marginBottom: "10px" }}>
-              <TrendingUp size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} /> Trending Items This Week
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {TRENDING.map((item, i) => (
-                <div key={i} className="trending-item">
-                  <div className="trending-rank">{i + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: "14px", fontWeight: "700" }}>{item.name}</p>
-                    <p style={{ fontSize: "12px", color: "var(--text-faint)" }}>Avg ${item.avgPrice}</p>
-                  </div>
-                  <span style={{ fontSize: "13px", fontWeight: "800", color: "var(--green-accent)" }}>{item.change}</span>
-                </div>
-              ))}
+          {/* No data state */}
+          {!loading && trending.length === 0 && !refreshing && (
+            <div style={{ textAlign: "center", padding: "32px 0" }}>
+              <TrendingUp size={28} style={{ color: "var(--text-faint)", margin: "0 auto 12px" }} />
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "16px" }}>No market data yet</p>
+              <button onClick={refreshData} className="btn-sm primary">Fetch Market Data</button>
             </div>
-          </div>
-
-          {/* Household prices */}
-          <div className="card">
-            <p className="card-label">Common Item Prices</p>
-            <div style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead><tr><th>Item</th><th>Low</th><th>High</th></tr></thead>
-                <tbody>
-                  {HOUSEHOLD_PRICES.map((item, i) => (
-                    <tr key={i}>
-                      <td style={{ fontWeight: "600" }}>{item.item}</td>
-                      <td>${item.low}</td>
-                      <td className="gradient-text" style={{ fontWeight: "700" }}>${item.high}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Platforms */}
-          <div className="card">
-            <p className="card-label">Platform Performance</p>
-            {PLATFORMS.map((p, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < PLATFORMS.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
-                <div>
-                  <p style={{ fontSize: "14px", fontWeight: "700" }}>{p.name}</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-faint)" }}>{p.note}</p>
-                </div>
-                <span className="platform-badge">{p.volume}</span>
-              </div>
-            ))}
-          </div>
+          )}
 
           {/* Tip */}
-          <div className="best-time-card">
-            <p className="card-label"><Lightbulb size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} /> Seller Tip of the Week</p>
-            <p style={{ fontSize: "15px", lineHeight: 1.6 }}>
-              Spring cleaning season is here — furniture and home decor sell 40% faster in April.
-              List bulky items now before summer when buyers focus on outdoor gear. Price competitively
-              and include measurements in your listing for faster sales.
-            </p>
-          </div>
+          <FadeUp>
+            <div style={{ background: "var(--green-light)", borderRadius: "14px", padding: "18px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                <Lightbulb size={14} style={{ color: "var(--green-accent)" }} />
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Seller Tip</p>
+              </div>
+              <p style={{ fontSize: "14px", color: "var(--text)", lineHeight: 1.6 }}>
+                Items trending this week often sell 20-30% faster than usual. Check if you have any of these items and list them now for the best price.
+              </p>
+            </div>
+          </FadeUp>
 
           {/* Newsletter */}
-          <div className="newsletter-box">
-            <p style={{ fontSize: "16px", fontWeight: "800", marginBottom: "4px" }}>Get This Report Weekly</p>
-            <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>Free market insights delivered every Monday.</p>
-            {!subscribed ? (
-              <div className="newsletter-input-row">
-                <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubscribe()} className="biz-input" style={{ fontSize: "13px" }} />
-                <button onClick={handleSubscribe} className="btn-sm primary">Subscribe</button>
-              </div>
-            ) : (
-              <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--green-accent)", marginTop: "12px" }}>
-                <Check size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Subscribed — check your inbox on Monday
-              </p>
-            )}
-          </div>
+          <FadeUp>
+            <div className="newsletter-box">
+              <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>Get This Report Weekly</p>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Free market insights every Monday.</p>
+              {!subscribed ? (
+                <div className="newsletter-input-row">
+                  <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubscribe()} className="input" style={{ fontSize: "13px" }} />
+                  <button onClick={handleSubscribe} className="btn-sm primary">Subscribe</button>
+                </div>
+              ) : (
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--green-accent)", marginTop: "12px" }}>
+                  <Check size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Subscribed
+                </p>
+              )}
+            </div>
+          </FadeUp>
         </div>
       </main>
     </PageTransition>
