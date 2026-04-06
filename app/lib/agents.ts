@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk"
-import { createClient } from "@supabase/supabase-js"
+import supabaseAdmin from "./supabase-admin"
 
 const anthropic = new Anthropic()
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-export { anthropic, supabase }
+// Export the admin client for direct use in agent routes
+export const supabase = supabaseAdmin
 
 export async function askClaude(prompt: string): Promise<string> {
   const msg = await anthropic.messages.create({
@@ -16,16 +16,17 @@ export async function askClaude(prompt: string): Promise<string> {
 }
 
 export async function logActivity(agentName: string, action: string, details?: string, status?: string) {
-  await supabase.from("agent_activity").insert({
+  const { error } = await supabaseAdmin.from("agent_activity").insert({
     agent_name: agentName,
     action,
-    details,
+    details: details || null,
     status: status || "completed",
   })
+  if (error) console.error(`[Agent Activity] Failed to log for ${agentName}:`, error.message)
 }
 
 export async function saveProposal(agentName: string, type: string, title: string, description: string, impact: string, complexity: string, content?: unknown) {
-  const { data } = await supabase.from("agent_proposals").insert({
+  const { data, error } = await supabaseAdmin.from("agent_proposals").insert({
     agent_name: agentName,
     proposal_type: type,
     title,
@@ -35,5 +36,6 @@ export async function saveProposal(agentName: string, type: string, title: strin
     status: "pending",
     content: content || null,
   }).select().single()
+  if (error) console.error(`[Agent Proposal] Failed to save "${title}":`, error.message)
   return data
 }

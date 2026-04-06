@@ -29,6 +29,14 @@ interface LiveData { livePrices: LivePrice[]; bestPricePlatform: string; demand:
 interface ItemResult {
   item: string; identificationConfidence?: number; valueLow: number; valueHigh: number; platform: string
   title: string; description: string
+  // Enhanced pricing
+  quickSalePrice?: number; fairMarketPrice?: number; patientPrice?: number
+  priceCurrency?: string; seasonalNote?: string; conditionNote?: string
+  // eBay listing
+  ebayTitle?: string; ebayDescription?: string
+  // Photo quality
+  photoIssue?: string | null; detectedCategory?: string
+  // Existing
   priceHistory?: PricePoint[]; comparables?: Comparable[]; bestTimeToSell?: BestTime
   platformComparison?: PlatformComp[]
   brand?: Brand; damageAnalysis?: DamageAnalysis; authenticity?: Authenticity
@@ -310,20 +318,53 @@ export default function Results() {
             </div>
           )}
 
-          {/* Value */}
+          {/* Photo quality warning */}
+          {result.photoIssue && (
+            <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: "14px", padding: "14px 18px" }}>
+              <p style={{ fontSize: "13px", color: "var(--gold)", fontWeight: 600 }}>{result.photoIssue}</p>
+            </div>
+          )}
+
+          {/* Value with pricing tiers */}
           <div className="card value-card">
-            <p className="card-label">Estimated Resale Value</p>
+            <p className="card-label">Estimated Resale Value {result.priceCurrency ? `(${result.priceCurrency})` : ""}</p>
             {hasDamage ? (
               <div>
-                <span className="price-original" style={{ fontSize: "18px" }}>${result.valueLow} – ${result.valueHigh}</span>
-                <p className="gradient-text" style={{ fontSize: "34px", fontWeight: "800" }}>${displayLow} – ${displayHigh}</p>
-                <p style={{ fontSize: "12px", color: "var(--text-faint)", marginTop: "4px" }}>Adjusted for visible damage</p>
+                <span className="price-original" style={{ fontSize: "16px" }}>${result.valueLow} – ${result.valueHigh}</span>
+                <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>${displayLow} – ${displayHigh}</p>
               </div>
             ) : (
-              <p className="gradient-text" style={{ fontSize: "34px", fontWeight: "800" }}>${displayLow} – ${displayHigh}</p>
+              <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>${displayLow} – ${displayHigh}</p>
             )}
+
+            {/* Pricing tiers */}
+            {(result.quickSalePrice || result.fairMarketPrice || result.patientPrice) && (
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
+                {result.quickSalePrice && (
+                  <div style={{ flex: 1, minWidth: "80px", padding: "8px", background: "var(--surface)", borderRadius: "8px", textAlign: "center" }}>
+                    <p style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Quick Sale</p>
+                    <p style={{ fontSize: "16px", fontWeight: 700 }}>${result.quickSalePrice}</p>
+                  </div>
+                )}
+                {result.fairMarketPrice && (
+                  <div style={{ flex: 1, minWidth: "80px", padding: "8px", background: "var(--surface)", borderRadius: "8px", textAlign: "center" }}>
+                    <p style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Fair Market</p>
+                    <p style={{ fontSize: "16px", fontWeight: 700, color: "var(--green-accent)" }}>${result.fairMarketPrice}</p>
+                  </div>
+                )}
+                {result.patientPrice && (
+                  <div style={{ flex: 1, minWidth: "80px", padding: "8px", background: "var(--surface)", borderRadius: "8px", textAlign: "center" }}>
+                    <p style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Patient Sell</p>
+                    <p style={{ fontSize: "16px", fontWeight: 700 }}>${result.patientPrice}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {result.seasonalNote && <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "8px" }}>{result.seasonalNote}</p>}
+            {result.conditionNote && <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>{result.conditionNote}</p>}
             {result.vintage?.premiumApplied && (
-              <p style={{ fontSize: "12px", color: "var(--green-accent)", fontWeight: "600", marginTop: "4px" }}>
+              <p style={{ fontSize: "11px", color: "var(--green-accent)", fontWeight: 600, marginTop: "4px" }}>
                 Includes {result.vintage.premiumPercentage}% vintage premium
               </p>
             )}

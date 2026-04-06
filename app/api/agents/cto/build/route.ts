@@ -8,20 +8,22 @@ export async function POST(request: Request) {
     const { data: proposal } = await supabase.from("agent_proposals").select("*").eq("id", proposal_id).single()
     if (!proposal) return Response.json({ error: "Proposal not found" }, { status: 404 })
 
-    const plan = await askClaude(
-      `You are the CTO of Flipt. Create a detailed implementation plan for this feature:\n\nTitle: ${proposal.title}\nDescription: ${proposal.description}\n\nProvide: 1) Technical approach, 2) Files to create/modify, 3) Step-by-step implementation, 4) Testing plan, 5) Estimated time. Return as JSON with keys: approach, files, steps (array), testing, estimated_hours.`
+    const raw = await askClaude(
+      `You are the CTO building this feature for Flipt:\n\nTitle: ${proposal.title}\nDescription: ${proposal.description}\n\nCreate a detailed implementation plan. Return JSON only with: approach (string), files (array of file paths), steps (array of step descriptions), testing (string), estimated_hours (number).`
     )
+    let plan: Record<string, unknown> = {}
+    try { plan = JSON.parse(raw) } catch { plan = { approach: raw, files: [], steps: [], testing: "Manual", estimated_hours: 8 } }
 
-    let parsed
-    try { parsed = JSON.parse(plan) } catch { parsed = { approach: plan } }
+    await supabase.from("agent_proposals").update({
+      status: "building",
+      content: { ...(typeof proposal.content === "object" ? proposal.content : {}), implementation_plan: plan },
+    }).eq("id", proposal_id)
 
-    await supabase.from("agent_proposals").update({ status: "building", content: { ...proposal.content, implementation_plan: parsed } }).eq("id", proposal_id)
-    await logActivity("CTO Agent", `Created build plan for: ${proposal.title}`, JSON.stringify(parsed).slice(0, 500))
-
-    return Response.json({ success: true, plan: parsed })
+    await logActivity("CTO Build Agent", `Created build plan for: ${proposal.title}`)
+    return Response.json({ success: true, plan })
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Build agent error"
-    await logActivity("CTO Agent", "Build plan failed", msg, "error")
+    const msg = err instanceof Error ? err.message : "Build error"
+    await logActivity("CTO Build Agent", "Build failed: " + msg, undefined, "error")
     return Response.json({ error: msg }, { status: 500 })
   }
 }

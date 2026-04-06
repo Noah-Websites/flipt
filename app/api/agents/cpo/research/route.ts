@@ -1,44 +1,34 @@
-import { askClaude, logActivity, supabase } from "../../../../lib/agents"
+import { askClaude, logActivity, saveProposal } from "../../../../lib/agents"
 
 export async function GET() {
   try {
     const raw = await askClaude(
-      `You are the CPO of Flipt, a Canadian resale pricing app. Analyze competitor apps: eBay, Mercari, OfferUp, Decluttr, Poshmark. Return JSON only:
-{
-  "competitor_features": [
-    {"feature": "name", "competitor": "who has it", "description": "what it does", "flipt_opportunity": "how Flipt could do it better"}
-  ],
-  "market_gaps": [
-    {"gap": "name", "description": "what nobody is doing", "opportunity_size": "Small/Medium/Large", "flipt_approach": "how Flipt could fill this"}
-  ]
-}
-Identify 3 competitor features and 3 market gaps.`
+      `You are the CPO of Flipt, a Canadian resale pricing app. Analyze competitors (eBay, Mercari, OfferUp, Decluttr, Poshmark). Return JSON only:
+{"competitor_features":[{"feature":"name","competitor":"who has it","description":"what it does","opportunity":"how Flipt could do it better"}],"market_gaps":[{"gap":"name","description":"what nobody does","size":"Small/Medium/Large","approach":"how Flipt fills this"}]}
+Include 3 competitor features and 3 market gaps.`
     )
+    let findings: { competitor_features?: Array<{ feature: string; competitor: string; description: string; opportunity: string }>; market_gaps?: Array<{ gap: string; description: string; size: string; approach: string }> } = {}
+    try { findings = JSON.parse(raw) } catch { findings = {} }
 
-    let findings
-    try { findings = JSON.parse(raw) } catch { findings = { competitor_features: [], market_gaps: [] } }
-
-    // Save as proposals
+    const saved = []
     for (const f of findings.competitor_features || []) {
-      await supabase.from("agent_proposals").insert({
-        agent_name: "CPO Agent", proposal_type: "product_research",
-        title: `Competitor feature: ${f.feature}`, description: `${f.competitor} has: ${f.description}\n\nOpportunity: ${f.flipt_opportunity}`,
-        impact_rating: "Medium", complexity: "Medium", status: "pending", content: f,
-      })
+      const d = await saveProposal("CPO Research Agent", "product_research",
+        `Competitor: ${f.feature}`, `${f.competitor} has: ${f.description}\n\nOpportunity: ${f.opportunity}`,
+        "Medium", "Medium", f)
+      if (d) saved.push(d)
     }
     for (const g of findings.market_gaps || []) {
-      await supabase.from("agent_proposals").insert({
-        agent_name: "CPO Agent", proposal_type: "product_research",
-        title: `Market gap: ${g.gap}`, description: `${g.description}\n\nOpportunity size: ${g.opportunity_size}\nApproach: ${g.flipt_approach}`,
-        impact_rating: g.opportunity_size === "Large" ? "High" : "Medium", complexity: "Medium", status: "pending", content: g,
-      })
+      const d = await saveProposal("CPO Research Agent", "product_research",
+        `Market Gap: ${g.gap}`, `${g.description}\n\nSize: ${g.size}\nApproach: ${g.approach}`,
+        g.size === "Large" ? "High" : "Medium", "Medium", g)
+      if (d) saved.push(d)
     }
 
-    await logActivity("CPO Agent", "Product research completed", `${(findings.competitor_features || []).length} features, ${(findings.market_gaps || []).length} gaps`)
-    return Response.json({ success: true, findings })
+    await logActivity("CPO Research Agent", `Product research completed: ${saved.length} findings`)
+    return Response.json({ success: true, count: saved.length })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Agent error"
-    await logActivity("CPO Agent", "Research failed", msg, "error")
+    await logActivity("CPO Research Agent", "Research failed: " + msg, undefined, "error")
     return Response.json({ error: msg }, { status: 500 })
   }
 }

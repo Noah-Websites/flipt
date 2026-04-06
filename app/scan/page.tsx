@@ -43,6 +43,9 @@ export default function Scan() {
   const [scanCount, setScanCount] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const [condition, setCondition] = useState<string>("Good")
+  // Multi-image state
+  const [extraImages, setExtraImages] = useState<Array<{ data: string; mediaType: string; preview: string }>>([])
+  const extraInputRef = useRef<HTMLInputElement>(null)
 
   // Bulk state
   const [bulkFiles, setBulkFiles] = useState<BulkFile[]>([])
@@ -99,6 +102,17 @@ export default function Scan() {
     Promise.all(promises).then(setBulkFiles)
   }
 
+  function handleExtraImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || extraImages.length >= 2) return
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(",")[1]
+      setExtraImages(prev => [...prev, { data: base64, mediaType: file.type || "image/jpeg", preview: URL.createObjectURL(file) }])
+    }
+    reader.readAsDataURL(file)
+  }
+
   async function handleIdentify() {
     if (!imageData) return
     if (scanCount >= FREE_SCAN_LIMIT) { setShowPaywall(true); return }
@@ -106,13 +120,24 @@ export default function Scan() {
     setLoading(true)
     setError(null)
     try {
+      // Build request with multi-image support
+      const allImages = [{ data: imageData, mediaType }]
+      for (const img of extraImages) allImages.push({ data: img.data, mediaType: img.mediaType })
+
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageData, mediaType, condition }),
+        body: JSON.stringify({ images: allImages, mediaType, condition }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || "Failed to identify item")
+
+      // Handle photo quality warnings
+      if (data.photoIssue) {
+        setError(data.photoIssue)
+        // Still continue with results if we got them
+        if (!data.item) { setLoading(false); return }
+      }
 
       const newCount = incrementScanCount()
       setScanCount(newCount)
@@ -390,9 +415,28 @@ export default function Scan() {
           </div>
         </div>
 
+        {/* Multi-image: add more photos */}
+        {imageData && extraImages.length < 2 && (
+          <div style={{ padding: "0 24px" }}>
+            <button onClick={() => extraInputRef.current?.click()} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "rgba(255,255,255,0.5)", fontSize: "13px", fontFamily: "var(--font-body)", cursor: "pointer", width: "100%", maxWidth: "340px", justifyContent: "center" }}>
+              <Camera size={14} /> Add another angle ({extraImages.length + 1}/3 photos)
+            </button>
+            {extraImages.length > 0 && (
+              <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                {extraImages.map((img, i) => (
+                  <div key={i} style={{ width: "48px", height: "48px", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <img src={img.preview} alt={`Photo ${i + 2}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Hidden inputs */}
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} style={{ display: "none" }} />
+        <input ref={extraInputRef} type="file" accept="image/*" onChange={handleExtraImage} style={{ display: "none" }} />
 
         {/* Action buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "calc(100% - 48px)", maxWidth: "340px", padding: "24px 0" }}>

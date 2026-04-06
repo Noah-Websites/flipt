@@ -2,53 +2,43 @@ import { askClaude, logActivity, supabase } from "../../../lib/agents"
 
 export async function GET() {
   try {
-    const today = new Date()
-    const yesterday = new Date(today.getTime() - 86400000)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
 
-    // Get pending proposals count
+    // Pending proposals
     const { count: pendingCount } = await supabase.from("agent_proposals").select("*", { count: "exact", head: true }).eq("status", "pending")
 
-    // Get revenue metrics
-    const { data: profiles } = await supabase.from("profiles").select("plan")
-    const { data: subs } = await supabase.from("subscriptions").select("plan, status, billing_period").eq("status", "active")
+    // User & revenue data
+    const { data: profiles } = await supabase.from("profiles").select("plan, created_at")
+    const all = profiles || []
+    const proCount = all.filter(p => p.plan === "pro").length
+    const bizCount = all.filter(p => p.plan === "business").length
+    const newToday = all.filter(p => new Date(p.created_at) >= today).length
+    const mrr = proCount * 5.99 + bizCount * 14.99
 
-    let mrr = 0
-    for (const s of subs || []) {
-      if (s.plan === "pro") mrr += s.billing_period === "yearly" ? 47.99 / 12 : s.billing_period === "weekly" ? 1.99 * 4.33 : 5.99
-      else if (s.plan === "business") mrr += s.billing_period === "yearly" ? 119.99 / 12 : s.billing_period === "weekly" ? 4.99 * 4.33 : 14.99
-    }
+    // Latest trends
+    const { data: trendActs } = await supabase.from("agent_activity").select("action").eq("agent_name", "Trend Spotter Agent").like("action", "Trending:%").order("created_at", { ascending: false }).limit(1)
+    const topTrend = trendActs?.[0]?.action?.replace("Trending: ", "") || "No trend data yet"
 
-    // Get latest trending item
-    const { data: trendActivity } = await supabase.from("agent_activity").select("details").eq("agent_name", "Trend Spotter").order("created_at", { ascending: false }).limit(1)
-    let trendingItem = "No trending data yet"
-    if (trendActivity?.[0]?.details) {
-      try {
-        const items = JSON.parse(trendActivity[0].details)
-        if (Array.isArray(items) && items.length > 0) trendingItem = items[0]
-      } catch { /* ignore */ }
-    }
+    // Scans today
+    const { count: scansToday } = await supabase.from("scans").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString())
 
-    const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
 
-    const briefingPrompt = `Write a concise CEO morning briefing for a startup called Flipt (AI resale pricing app). Keep it under 200 words, professional but warm tone. Here is the data:
-
-Date: ${dateStr}
-CEO Name: Noah
-MRR: $${mrr.toFixed(2)} CAD
-Total users: ${(profiles || []).length}
-Active paid subscriptions: ${(subs || []).length}
-Pending proposals awaiting review: ${pendingCount || 0}
-Top trending resale item: ${trendingItem}
-
-Format as a brief with sections: REVENUE, TRENDING, AWAITING APPROVAL, TOP PRIORITY. Start with "Good morning Noah."`
-
-    const briefing = await askClaude(briefingPrompt)
+    const briefing = await askClaude(
+      `Write a concise CEO morning briefing for Flipt (AI resale app). Under 200 words, professional but warm.
+Date: ${dateStr}, CEO: Noah
+MRR: $${mrr.toFixed(2)} CAD, Total users: ${all.length}, Paid: ${proCount + bizCount}
+New users today: ${newToday}, Scans today: ${scansToday || 0}
+Pending proposals: ${pendingCount || 0}
+Top trending item: ${topTrend}
+Format: Start "Good morning Noah." then sections REVENUE, TRENDING, AWAITING APPROVAL, TOP PRIORITY.`
+    )
 
     await logActivity("Morning Briefing", "Daily briefing generated", briefing, "morning_briefing")
-    return Response.json({ success: true, briefing, metrics: { mrr, totalUsers: (profiles || []).length, pendingProposals: pendingCount || 0 } })
+    return Response.json({ success: true, briefing })
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Briefing failed"
-    await logActivity("Morning Briefing", "Briefing generation failed", msg, "error")
+    const msg = err instanceof Error ? err.message : "Briefing error"
+    await logActivity("Morning Briefing", "Briefing failed: " + msg, undefined, "error")
     return Response.json({ error: msg }, { status: 500 })
   }
 }

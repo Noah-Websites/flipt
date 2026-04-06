@@ -1,42 +1,39 @@
 import { logActivity } from "../../../lib/agents"
 
-async function callAgent(baseUrl: string, path: string): Promise<{ path: string; status: string; data?: unknown }> {
-  try {
-    const res = await fetch(`${baseUrl}${path}`)
-    const data = await res.json()
-    return { path, status: res.ok ? "success" : "error", data }
-  } catch {
-    return { path, status: "error" }
-  }
-}
+const AGENTS = [
+  { name: "CFO Revenue Agent", path: "/api/agents/cfo/revenue" },
+  { name: "Trend Spotter Agent", path: "/api/agents/trend-spotter" },
+  { name: "CTO Research Agent", path: "/api/agents/cto/research" },
+  { name: "CMO Research Agent", path: "/api/agents/cmo/research" },
+  { name: "CMO Content Agent", path: "/api/agents/cmo/content" },
+  { name: "CPO Research Agent", path: "/api/agents/cpo/research" },
+  { name: "COO Support Agent", path: "/api/agents/coo/support" },
+  { name: "Morning Briefing", path: "/api/agents/morning-briefing" },
+]
 
 export async function GET(request: Request) {
   const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
-  try {
-    await logActivity("System", "Running all agents", "Batch run initiated")
+  await logActivity("System", "Running all agents — batch started")
+  const results: Array<{ name: string; status: string; error?: string }> = []
 
-    const results = []
-    const agents = [
-      "/api/agents/cto/research",
-      "/api/agents/cmo/content",
-      "/api/agents/cfo/revenue",
-      "/api/agents/cpo/research",
-      "/api/agents/trend-spotter",
-    ]
-
-    for (const path of agents) {
-      const result = await callAgent(origin, path)
-      results.push(result)
+  for (const agent of AGENTS) {
+    try {
+      const res = await fetch(`${origin}${agent.path}`, { method: "GET" })
+      if (res.ok) {
+        results.push({ name: agent.name, status: "success" })
+      } else {
+        const data = await res.json().catch(() => ({ error: "Unknown" }))
+        results.push({ name: agent.name, status: "failed", error: data.error })
+      }
+    } catch (err) {
+      results.push({ name: agent.name, status: "failed", error: err instanceof Error ? err.message : "Network error" })
     }
-
-    const summary = results.map(r => `${r.path}: ${r.status}`).join("\n")
-    await logActivity("System", "All agents completed", summary)
-
-    return Response.json({ success: true, results })
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Run-all failed"
-    await logActivity("System", "Batch run failed", msg, "error")
-    return Response.json({ error: msg }, { status: 500 })
   }
+
+  const succeeded = results.filter(r => r.status === "success").length
+  const failed = results.filter(r => r.status === "failed").length
+  await logActivity("System", `Batch complete: ${succeeded} succeeded, ${failed} failed`, JSON.stringify(results))
+
+  return Response.json({ success: true, results, summary: { succeeded, failed, total: AGENTS.length } })
 }
