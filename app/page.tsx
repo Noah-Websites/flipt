@@ -158,22 +158,36 @@ export default function Home() {
             <h2 style={{ fontSize: "32px", textAlign: "center", marginBottom: "8px" }}>Simple Pricing</h2>
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "32px" }}>Start free. Upgrade when you are ready.</p>
           </FadeUp>
-          <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", gap: "12px" }}>
+          <div style={{ maxWidth: "720px", margin: "0 auto", display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
             <ScaleIn delay={0.1}>
-              <div style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", textAlign: "center" }}>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>Free</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700, marginBottom: "12px" }}>$0</p>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "16px" }}>5 scans per month</p>
-                <button onClick={() => router.push("/scan")} className="btn-secondary" style={{ width: "100%", padding: "10px", fontSize: "13px" }}>Get Started</button>
+              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "22px", textAlign: "center" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>Free</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$0</p>
+                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "14px" }}>5 scans/month</p>
+                <button onClick={() => router.push("/scan")} className="btn-secondary" style={{ width: "100%", padding: "10px", fontSize: "12px" }}>Get Started</button>
               </div>
             </ScaleIn>
             <ScaleIn delay={0.2}>
-              <div style={{ flex: 1, background: "var(--green-light)", border: "1px solid var(--green-accent)", borderRadius: "16px", padding: "24px", textAlign: "center", position: "relative" }}>
-                <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "var(--green-accent)", color: "#000", fontSize: "10px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px" }}>Popular</div>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--green-accent)", marginBottom: "4px" }}>Pro</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700, marginBottom: "12px" }}>$5.99<span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>/mo</span></p>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "16px" }}>Unlimited scans</p>
-                <button onClick={() => router.push("/settings")} className="btn-primary" style={{ width: "100%", padding: "10px", fontSize: "13px" }}>Upgrade</button>
+              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--green-light)", border: "1px solid var(--green-accent)", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
+                <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "var(--green-accent)", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Most Popular</div>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--green-accent)", marginBottom: "4px" }}>Pro</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$5.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "14px" }}>Unlimited scans + all features</p>
+                <button onClick={() => router.push("/settings")} className="btn-primary" style={{ width: "100%", padding: "10px", fontSize: "12px" }}>Upgrade</button>
+              </div>
+            </ScaleIn>
+            <ScaleIn delay={0.3}>
+              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--surface)", border: "1px solid #c9a84c", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
+                <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "#c9a84c", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Best for Power Sellers</div>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "#c9a84c", marginBottom: "4px" }}>Business</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$14.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <div style={{ fontSize: "10px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.6, textAlign: "left" }}>
+                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Everything in Pro</p>
+                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Business P&L + Tax estimates</p>
+                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Multi account manager</p>
+                  <p><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Bulk scan + CSV export</p>
+                </div>
+                <button onClick={() => router.push("/settings")} style={{ width: "100%", padding: "10px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", background: "#c9a84c", color: "#000", border: "none", borderRadius: "50px", cursor: "pointer" }}>Upgrade</button>
               </div>
             </ScaleIn>
           </div>

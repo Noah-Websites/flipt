@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Check } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, ScaleIn, CountUp } from "../components/Motion"
 import { getReferralCode, getReferralCount, getBonusScans } from "../lib/storage"
 
 export default function Referral() {

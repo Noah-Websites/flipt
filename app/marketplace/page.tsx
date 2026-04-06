@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Search, MessageCircle, Bookmark, ShoppingBag } from "lucide-react"
-import { PageTransition, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn, ScaleIn } from "../components/Motion"
 import { useAuth } from "../components/AuthProvider"
 import { useCurrency } from "../components/CurrencyProvider"
 import { getMarketplaceListings as getDbListings } from "../lib/db"
@@ -80,16 +80,20 @@ export default function Marketplace() {
         <div style={{ padding: "32px 20px 16px" }}>
           <h2 style={{ marginBottom: "16px" }}>Marketplace</h2>
 
-          <div style={{ position: "relative", marginBottom: "12px" }}>
-            <Search size={16} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)" }} />
-            <input type="text" placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="input search" />
-          </div>
+          <FadeUp delay={0.1}>
+            <div style={{ position: "relative", marginBottom: "12px" }}>
+              <Search size={16} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)" }} />
+              <input type="text" placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="input search" />
+            </div>
+          </FadeUp>
 
-          <div className="mp-filters" style={{ marginBottom: "8px" }}>
-            {CATEGORIES.map(c => (
-              <button key={c} onClick={() => setCategory(c)} className={`mp-filter-chip ${category === c ? "active" : ""}`}>{c}</button>
-            ))}
-          </div>
+          <SlideIn direction="left">
+            <div className="mp-filters" style={{ marginBottom: "8px" }}>
+              {CATEGORIES.map(c => (
+                <button key={c} onClick={() => setCategory(c)} className={`mp-filter-chip ${category === c ? "active" : ""}`}>{c}</button>
+              ))}
+            </div>
+          </SlideIn>
           <div className="mp-filters">
             {SORTS.map(s => (
               <button key={s.key} onClick={() => setSort(s.key)} className={`mp-filter-chip ${sort === s.key ? "active" : ""}`}>{s.label}</button>

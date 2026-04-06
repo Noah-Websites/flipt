@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { TrendingUp, Lightbulb, Check, MapPin, RefreshCw, Flame } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn, CountUp } from "../components/Motion"
 import { getMarketEmail, setMarketEmail, getCloset } from "../lib/storage"
 
 const TRENDING = [

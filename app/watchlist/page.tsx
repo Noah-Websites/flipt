@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Bookmark, Trash2, Bell, BellOff, TrendingDown, Package } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn } from "../components/Motion"
 import { getWatchlist, removeFromWatchlist, toggleWatchlistNotify, type WatchlistItem } from "../lib/storage"
 import { useAuth } from "../components/AuthProvider"
 import { LockedPage } from "../components/UpgradeModal"

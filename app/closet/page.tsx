@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Archive, Check } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, CountUp, SlideIn } from "../components/Motion"
 import { useAuth } from "../components/AuthProvider"
 import { LockedPage } from "../components/UpgradeModal"
 import { useSubscription } from "../lib/useSubscription"

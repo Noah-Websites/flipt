@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Users, UserMinus, Package } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn } from "../components/Motion"
 import { getFollowing, unfollowSeller, getFeed, type FollowedSeller, type FeedPost } from "../lib/storage"
 
 function getInitials(name: string) {

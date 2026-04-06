@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Heart, Star, Link2, Check, Copy, ExternalLink, ShoppingCart, MapPin, ArrowRight, Shield, Search as SearchIcon, Tag, Clock, Award, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, Activity, Users, Rss, Pencil, X } from "lucide-react"
 import PriceChart from "../components/PriceChart"
 import CollapsibleSection from "../components/CollapsibleSection"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem } from "../components/Motion"
+import { PageTransition, FadeUp, StaggerContainer, StaggerItem, ScaleIn, SlideIn, CountUp, Typewriter } from "../components/Motion"
 import { useAuth } from "../components/AuthProvider"
 import UpgradeModal, { LockedOverlay } from "../components/UpgradeModal"
 import { useSubscription } from "../lib/useSubscription"
@@ -212,20 +212,19 @@ export default function Results() {
 
   return (
     <PageTransition>
-      <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "32px 16px 120px", gap: "14px" }}>
-        <FadeUp>
-          <p className="card-label" style={{ marginBottom: "0", textAlign: "center" }}>Scan Results</p>
-        </FadeUp>
+      <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "0 0 120px", gap: "0" }}>
 
+        {/* Hero photo with cinematic reveal */}
         {imageUrl && (
-          <FadeUp delay={0.1}>
-          <div style={{ width: "100%", maxWidth: "400px", aspectRatio: "4/3", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+          <ScaleIn>
+          <div style={{ width: "100%", maxWidth: "100%", aspectRatio: "4/3", overflow: "hidden", position: "relative" }}>
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 80%, rgba(45,106,79,0.15) 0%, transparent 60%)", zIndex: 1 }} />
             <img src={imageUrl} alt="Scanned item" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
-          </FadeUp>
+          </ScaleIn>
         )}
 
-        <div style={{ width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "12px", padding: "20px 16px 0" }}>
 
           {/* Brand */}
           {result.brand && result.brand.name !== "Unknown" && (
@@ -334,7 +333,9 @@ export default function Results() {
                 <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>${displayLow} – ${displayHigh}</p>
               </div>
             ) : (
-              <p style={{ fontSize: "32px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>${displayLow} – ${displayHigh}</p>
+              <p style={{ fontSize: "36px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)" }}>
+                $<CountUp value={displayLow} /> – $<CountUp value={displayHigh} />
+              </p>
             )}
 
             {/* Pricing tiers */}
