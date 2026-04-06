@@ -39,6 +39,7 @@ export default function Scan() {
   const [imageData, setImageData] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<string>("image/jpeg")
   const [loading, setLoading] = useState(false)
+  const [scanStep, setScanStep] = useState(0) // 0-4 for progress
   const [error, setError] = useState<string | null>(null)
   const [scanCount, setScanCount] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -67,13 +68,31 @@ export default function Scan() {
 
   function processFile(file: File) {
     setPreview(URL.createObjectURL(file))
-    setMediaType(file.type || "image/jpeg")
     setError(null)
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setImageData((reader.result as string).split(",")[1])
+
+    // Compress image using Canvas
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      const MAX = 1200 // max dimension
+      let w = img.width, h = img.height
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+        else { w = Math.round(w * MAX / h); h = MAX }
+      }
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext("2d")
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
+        setImageData(dataUrl.split(",")[1])
+        setMediaType("image/jpeg")
+        // Show size
+        const sizeKB = Math.round(dataUrl.length * 0.75 / 1024)
+        if (sizeKB > 5000) setError(`Image is ${(sizeKB / 1024).toFixed(1)}MB — compressing for faster scan.`)
+      }
     }
-    reader.readAsDataURL(file)
+    img.src = URL.createObjectURL(file)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -118,24 +137,42 @@ export default function Scan() {
     if (scanCount >= FREE_SCAN_LIMIT) { setShowPaywall(true); return }
 
     setLoading(true)
+    setScanStep(1) // Uploading
     setError(null)
     try {
-      // Build request with multi-image support
       const allImages = [{ data: imageData, mediaType }]
       for (const img of extraImages) allImages.push({ data: img.data, mediaType: img.mediaType })
+
+      // Progress simulation (steps advance on timers while API runs)
+      const stepTimers = [
+        setTimeout(() => setScanStep(2), 2000),  // Analyzing
+        setTimeout(() => setScanStep(3), 6000),  // Researching
+        setTimeout(() => setScanStep(4), 12000), // Preparing
+      ]
 
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ images: allImages, mediaType, condition }),
       })
-      const data = await res.json()
-      if (!res.ok || data.error) throw new Error(data.error || "Failed to identify item")
 
-      // Handle photo quality warnings
+      // Clear timers
+      stepTimers.forEach(clearTimeout)
+      setScanStep(4)
+
+      const data = await res.json()
+
+      // Handle fallback / failure cases
+      if (data.fallback || (!res.ok && data.error)) {
+        throw new Error(data.error || "Could not analyze this image. Please try again.")
+      }
+      if (data.error && !data.item) {
+        throw new Error(data.error)
+      }
+
+      // Handle photo quality warnings (still continue if we got results)
       if (data.photoIssue) {
         setError(data.photoIssue)
-        // Still continue with results if we got them
         if (!data.item) { setLoading(false); return }
       }
 
@@ -174,9 +211,10 @@ export default function Scan() {
       if (preview) sessionStorage.setItem("flipt-image", preview)
       router.push("/results")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
     } finally {
       setLoading(false)
+      setScanStep(0)
     }
   }
 
@@ -450,8 +488,17 @@ export default function Scan() {
             }}
           >
             {loading && <span className="spinner" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "#fff" }} />}
-            {loading ? "Analyzing..." : "Identify This Item"}
+            {loading
+              ? (scanStep === 1 ? "Uploading image..." : scanStep === 2 ? "Analyzing item..." : scanStep === 3 ? "Researching prices..." : "Preparing results...")
+              : "Identify This Item"}
           </button>
+
+          {/* Progress bar during scan */}
+          {loading && (
+            <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
+              <div style={{ height: "100%", background: "var(--green-accent)", transition: "width 0.5s ease", width: `${scanStep * 25}%` }} />
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
             <button onClick={() => cameraInputRef.current?.click()} style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50px", padding: "10px 20px", color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 500, fontFamily: "var(--font-body)", cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -464,8 +511,11 @@ export default function Scan() {
         </div>
 
         {error && (
-          <div className="error-shake" style={{ margin: "0 24px", padding: "12px 20px", background: "rgba(214,69,69,0.1)", borderRadius: "12px", border: "1px solid rgba(214,69,69,0.2)", maxWidth: "340px" }}>
-            <p style={{ color: "#e74c3c", fontSize: "13px", fontWeight: 500, textAlign: "center" }}>{error}</p>
+          <div style={{ margin: "0 24px", padding: "16px 20px", background: "rgba(214,69,69,0.1)", borderRadius: "12px", border: "1px solid rgba(214,69,69,0.2)", maxWidth: "340px", textAlign: "center" }}>
+            <p style={{ color: "#e74c3c", fontSize: "13px", fontWeight: 500, marginBottom: "10px" }}>{error}</p>
+            <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary" style={{ fontSize: "12px" }}>
+              Try Again
+            </button>
           </div>
         )}
       </main>
