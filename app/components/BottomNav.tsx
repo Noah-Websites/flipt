@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, ScanLine, ShoppingBag, Rss, MoreHorizontal, Clock, Archive, Bookmark, Users, Gift, BarChart3, Briefcase, Gem, LayoutGrid, Settings, Bell } from "lucide-react"
+import { Home, ScanLine, ShoppingBag, Rss, MoreHorizontal, Clock, Archive, Bookmark, Users, Gift, BarChart3, Briefcase, Gem, LayoutGrid, Settings, Bell, User, Search } from "lucide-react"
 import { getWatchlistCount, getPlan } from "../lib/storage"
 
 const NAV_ITEMS = [
@@ -13,16 +13,18 @@ const NAV_ITEMS = [
 ]
 
 const MORE_ITEMS = [
+  { label: "Profile", path: "/profile", Icon: User },
   { label: "History", path: "/history", Icon: Clock },
   { label: "My Closet", path: "/closet", Icon: Archive },
   { label: "Watchlist", path: "/watchlist", Icon: Bookmark, badge: true },
+  { label: "Search", path: "/search", Icon: Search },
   { label: "Following", path: "/following", Icon: Users },
+  { label: "Notifications", path: "/notifications", Icon: Bell },
   { label: "Referrals", path: "/referral", Icon: Gift },
   { label: "Market Report", path: "/market", Icon: BarChart3 },
   { label: "Business", path: "/business", Icon: Briefcase },
   { label: "Hidden Gems", path: "/gems", Icon: Gem },
   { label: "Accounts", path: "/accounts", Icon: LayoutGrid },
-  { label: "Notifications", path: "/notifications", Icon: Bell },
   { label: "Settings", path: "/settings", Icon: Settings },
 ]
 

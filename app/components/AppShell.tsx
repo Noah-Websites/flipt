@@ -79,7 +79,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       localStorage.setItem(SEEN_KEY, "true")
       setPhase("app")
-      router.push("/signup")
+      // Take new users to scan page for their first scan experience
+      router.push("/scan")
     }, 400)
   }, [selectedTheme, theme, toggle, router])
 

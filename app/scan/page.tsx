@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Lock, Check, ImagePlus, Upload, Camera } from "lucide-react"
+import { Lock, Check, Upload, Camera, X, Plus, Aperture } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "../components/AuthProvider"
 import { addToHistory, saveBulkReport, isPro, getBonusScans, type BulkReportItem } from "../lib/storage"
 import { saveScan } from "../lib/db"
@@ -22,12 +23,14 @@ function incrementScanCount(): number {
   return count
 }
 
-interface BulkFile {
-  file: File
-  preview: string
-  base64: string
-  mediaType: string
-}
+const SCAN_STEPS = [
+  "Identifying item...",
+  "Checking prices...",
+  "Finding best platforms...",
+  "Preparing results...",
+]
+
+const CONDITIONS = ["Poor", "Fair", "Good", "Excellent"]
 
 export default function Scan() {
   const router = useRouter()
@@ -40,6 +43,7 @@ export default function Scan() {
   const [mediaType, setMediaType] = useState<string>("image/jpeg")
   const [loading, setLoading] = useState(false)
   const [scanStep, setScanStep] = useState(0)
+  const [scanProgress, setScanProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [manualName, setManualName] = useState("")
@@ -48,37 +52,60 @@ export default function Scan() {
   const [scanCount, setScanCount] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const [condition, setCondition] = useState<string>("Good")
-  // Multi-image state
   const [extraImages, setExtraImages] = useState<Array<{ data: string; mediaType: string; preview: string }>>([])
   const extraInputRef = useRef<HTMLInputElement>(null)
-
-  // Bulk state
-  const [bulkFiles, setBulkFiles] = useState<BulkFile[]>([])
+  const [bulkFiles, setBulkFiles] = useState<Array<{ file: File; preview: string; base64: string; mediaType: string }>>([])
   const [bulkProgress, setBulkProgress] = useState(0)
   const [bulkTotal, setBulkTotal] = useState(0)
   const [bulkScanning, setBulkScanning] = useState(false)
 
-  const CONDITIONS = ["Poor", "Fair", "Good", "Excellent"]
-
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const bulkInputRef = useRef<HTMLInputElement>(null)
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     const count = getScanCount()
     setScanCount(count)
-    if (count >= FREE_SCAN_LIMIT) setShowPaywall(true)
+    if (count >= FREE_SCAN_LIMIT && !isPro()) setShowPaywall(true)
   }, [])
+
+  // Smooth progress animation during scan
+  useEffect(() => {
+    if (loading) {
+      setScanProgress(0)
+      let current = 0
+      progressRef.current = setInterval(() => {
+        current += 0.4 + Math.random() * 0.3
+        if (current > 95) current = 95
+        setScanProgress(current)
+      }, 150)
+      return () => { if (progressRef.current) clearInterval(progressRef.current) }
+    } else {
+      if (progressRef.current) clearInterval(progressRef.current)
+      setScanProgress(0)
+    }
+  }, [loading])
+
+  // Cycle through scan steps
+  useEffect(() => {
+    if (!loading) return
+    setScanStep(0)
+    const timers = [
+      setTimeout(() => setScanStep(1), 3000),
+      setTimeout(() => setScanStep(2), 7000),
+      setTimeout(() => setScanStep(3), 12000),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [loading])
 
   function processFile(file: File) {
     setPreview(URL.createObjectURL(file))
     setError(null)
-
-    // Compress image using Canvas
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement("canvas")
-      const MAX = 1200 // max dimension
+      const MAX = 1200
       let w = img.width, h = img.height
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX }
@@ -91,9 +118,6 @@ export default function Scan() {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
         setImageData(dataUrl.split(",")[1])
         setMediaType("image/jpeg")
-        // Show size
-        const sizeKB = Math.round(dataUrl.length * 0.75 / 1024)
-        if (sizeKB > 5000) setError(`Image is ${(sizeKB / 1024).toFixed(1)}MB — compressing for faster scan.`)
       }
     }
     img.src = URL.createObjectURL(file)
@@ -102,27 +126,6 @@ export default function Scan() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) processFile(file)
-  }
-
-  function handleBulkFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []).slice(0, MAX_BULK)
-    if (!files.length) return
-    setError(null)
-
-    const promises = files.map(file => new Promise<BulkFile>((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        resolve({
-          file,
-          preview: URL.createObjectURL(file),
-          base64: (reader.result as string).split(",")[1],
-          mediaType: file.type || "image/jpeg",
-        })
-      }
-      reader.readAsDataURL(file)
-    }))
-
-    Promise.all(promises).then(setBulkFiles)
   }
 
   function handleExtraImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -136,77 +139,51 @@ export default function Scan() {
     reader.readAsDataURL(file)
   }
 
+  function removeExtraImage(idx: number) {
+    setExtraImages(prev => prev.filter((_, i) => i !== idx))
+  }
+
   async function handleIdentify() {
     if (!imageData) return
-    if (scanCount >= FREE_SCAN_LIMIT) { setShowPaywall(true); return }
-
+    if (scanCount >= FREE_SCAN_LIMIT && !isPro()) { setShowPaywall(true); return }
     setLoading(true)
-    setScanStep(1) // Uploading
     setError(null)
     try {
       const allImages = [{ data: imageData, mediaType }]
       for (const img of extraImages) allImages.push({ data: img.data, mediaType: img.mediaType })
-
-      // Progress simulation (steps advance on timers while API runs)
-      const stepTimers = [
-        setTimeout(() => setScanStep(2), 2000),  // Analyzing
-        setTimeout(() => setScanStep(3), 6000),  // Researching
-        setTimeout(() => setScanStep(4), 12000), // Preparing
-      ]
 
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ images: allImages, mediaType, condition }),
       })
-
-      // Clear timers
-      stepTimers.forEach(clearTimeout)
-      setScanStep(4)
-
+      setScanProgress(100)
       const data = await res.json()
 
-      // Handle fallback / failure cases
       if (data.fallback) {
         setFallbackTips(data.tips || [])
         setShowManualEntry(true)
         setError(data.error || "We had trouble with this image.")
-        setLoading(false); setScanStep(0)
+        setLoading(false)
         return
       }
-      if (data.error && !data.item) {
-        throw new Error(data.error)
-      }
-
-      // Handle photo quality warnings (still continue if we got results)
-      if (data.photoIssue) {
-        setError(data.photoIssue)
-        if (!data.item) { setLoading(false); return }
-      }
+      if (data.error && !data.item) throw new Error(data.error)
 
       const newCount = incrementScanCount()
       setScanCount(newCount)
 
-      // Save to localStorage (fallback)
       const historyEntry = addToHistory({
         item: data.item, valueLow: data.valueLow, valueHigh: data.valueHigh,
         platform: data.platform, title: data.title, description: data.description, imageUrl: preview,
       })
 
-      // Save to Supabase if logged in
       let dbScanId: string | null = null
       if (user) {
         const { data: dbScan } = await saveScan(user.id, {
-          item_name: data.item,
-          brand: data.brand?.name,
-          condition,
-          estimated_value_low: data.valueLow,
-          estimated_value_high: data.valueHigh,
-          best_platform: data.platform,
-          listing_title: data.title,
-          listing_description: data.description,
-          image_url: preview || undefined,
-          ai_response: data,
+          item_name: data.item, brand: data.brand?.name, condition,
+          estimated_value_low: data.valueLow, estimated_value_high: data.valueHigh,
+          best_platform: data.platform, listing_title: data.title,
+          listing_description: data.description, image_url: preview || undefined, ai_response: data,
         })
         if (dbScan) dbScanId = dbScan.id
       }
@@ -220,16 +197,14 @@ export default function Scan() {
       router.push("/results")
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong."
-      // Detect ad-blocker interference
       if (err instanceof TypeError && (msg.includes("Failed to fetch") || msg.includes("Load failed") || msg.includes("NetworkError"))) {
-        setError("Scan failed — your ad blocker may be interfering. Try disabling it for this site, or enter the item name manually.")
+        setError("Scan failed — your ad blocker may be interfering. Try disabling it, or enter the item name below.")
         setShowManualEntry(true)
       } else {
         setError(msg)
       }
     } finally {
       setLoading(false)
-      setScanStep(0)
     }
   }
 
@@ -250,242 +225,280 @@ export default function Scan() {
         if (preview) sessionStorage.setItem("flipt-image", preview)
         router.push("/results")
       } else {
-        setError("Could not get pricing. Please try a more specific item name.")
+        setError("Could not get pricing. Please try a more specific name.")
       }
-    } catch {
-      setError("Something went wrong. Please try again.")
-    }
+    } catch { setError("Something went wrong. Please try again.") }
     setManualLoading(false)
+  }
+
+  function handleBulkFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []).slice(0, MAX_BULK)
+    if (!files.length) return
+    setError(null)
+    const promises = files.map(file => new Promise<typeof bulkFiles[number]>((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve({ file, preview: URL.createObjectURL(file), base64: (reader.result as string).split(",")[1], mediaType: file.type || "image/jpeg" })
+      reader.readAsDataURL(file)
+    }))
+    Promise.all(promises).then(setBulkFiles)
   }
 
   async function handleBulkScan() {
     if (!bulkFiles.length) return
-    setBulkScanning(true)
-    setBulkProgress(0)
-    setBulkTotal(bulkFiles.length)
-    setError(null)
-
+    setBulkScanning(true); setBulkProgress(0); setBulkTotal(bulkFiles.length); setError(null)
     const results: BulkReportItem[] = []
-
     for (let i = 0; i < bulkFiles.length; i++) {
       const bf = bulkFiles[i]
       try {
-        const res = await fetch("/api/identify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: bf.base64, mediaType: bf.mediaType, condition }),
-        })
+        const res = await fetch("/api/identify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: bf.base64, mediaType: bf.mediaType, condition }) })
         const data = await res.json()
         if (!res.ok || data.error) throw new Error(data.error)
-
         incrementScanCount()
-        results.push({
-          item: data.item, valueLow: data.valueLow, valueHigh: data.valueHigh,
-          platform: data.platform, title: data.title, description: data.description,
-          imageUrl: bf.preview, condition,
-        })
+        results.push({ item: data.item, valueLow: data.valueLow, valueHigh: data.valueHigh, platform: data.platform, title: data.title, description: data.description, imageUrl: bf.preview, condition })
       } catch {
-        results.push({
-          item: `Item ${i + 1} (scan failed)`, valueLow: 0, valueHigh: 0,
-          platform: "N/A", title: "", description: "", imageUrl: bf.preview, condition,
-        })
+        results.push({ item: `Item ${i + 1} (scan failed)`, valueLow: 0, valueHigh: 0, platform: "N/A", title: "", description: "", imageUrl: bf.preview, condition })
       }
       setBulkProgress(i + 1)
     }
-
     saveBulkReport(results)
     setBulkScanning(false)
     router.push("/report")
   }
 
   const remaining = Math.max(0, FREE_SCAN_LIMIT - scanCount)
-  const progress = (remaining / FREE_SCAN_LIMIT) * 100
 
+  // ── PAYWALL ──
   if (showPaywall) {
     return (
-      <>
-        <main style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "48px 24px", gap: "28px" }}>
-          <div style={{ width: "72px", height: "72px", borderRadius: "20px", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Lock size={32} style={{ color: "var(--text-muted)" }} />
-          </div>
-          <h1 style={{ fontSize: "28px", fontWeight: "800", textAlign: "center" }}>You&apos;ve used all 5 free scans</h1>
-          <p style={{ fontSize: "16px", color: "var(--text-muted)", textAlign: "center", maxWidth: "340px", lineHeight: 1.6 }}>Upgrade to Flipt Pro for unlimited scans and keep turning your clutter into cash.</p>
-          <div className="paywall-card" style={{ maxWidth: "360px", width: "100%", textAlign: "center" }}>
-            <p style={{ fontSize: "12px", fontWeight: "800", color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Flipt Pro</p>
-            <p className="gradient-text" style={{ fontSize: "52px", fontWeight: "800", lineHeight: 1.2, margin: "8px 0" }}>$4.99</p>
-            <p style={{ fontSize: "14px", color: "var(--text-faint)", marginBottom: "28px" }}>per month</p>
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 28px", textAlign: "left" }}>
-              {["Unlimited scans", "Priority AI analysis", "Listing history", "Multi-photo support"].map(f => (
-                <li key={f} style={{ fontSize: "15px", fontWeight: "500", color: "var(--text)", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: "10px" }}>
+      <main className="scan-paywall">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.4 }}>
+          <div className="scan-paywall-icon"><Lock size={32} /></div>
+          <h1 style={{ fontSize: "28px", fontWeight: 800, textAlign: "center", marginBottom: "8px" }}>You&apos;ve used all {FREE_SCAN_LIMIT} free scans</h1>
+          <p style={{ fontSize: "15px", color: "var(--text-muted)", textAlign: "center", maxWidth: "340px", lineHeight: 1.6, margin: "0 auto 28px" }}>Upgrade to Flipt Pro for unlimited scans and keep turning your clutter into cash.</p>
+          <div className="paywall-card" style={{ maxWidth: "360px", width: "100%", textAlign: "center", margin: "0 auto" }}>
+            <p style={{ fontSize: "12px", fontWeight: 800, color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Flipt Pro</p>
+            <p className="gradient-text" style={{ fontSize: "48px", fontWeight: 800, lineHeight: 1.2 }}>$4.99</p>
+            <p style={{ fontSize: "14px", color: "var(--text-faint)", marginBottom: "24px" }}>per month</p>
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", textAlign: "left" }}>
+              {["Unlimited scans", "Priority AI analysis", "Full scan history", "Multi-photo support"].map(f => (
+                <li key={f} style={{ fontSize: "14px", fontWeight: 500, color: "var(--text)", padding: "8px 0", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: "10px" }}>
                   <Check size={14} style={{ color: "var(--green-accent)" }} />{f}
                 </li>
               ))}
             </ul>
-            <button className="btn-primary" style={{ width: "100%", borderRadius: "14px" }}>Upgrade to Pro</button>
+            <button className="btn-primary" style={{ width: "100%", borderRadius: "14px" }} onClick={() => router.push("/settings")}>Upgrade to Pro</button>
           </div>
-          <button onClick={() => router.push("/")} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: "14px", fontWeight: "600", fontFamily: "inherit", cursor: "pointer" }}>Back to Home</button>
-        </main>
-      </>
+          <button onClick={() => { setShowPaywall(false); router.push("/") }} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: "14px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer", marginTop: "16px" }}>Back to Home</button>
+        </motion.div>
+      </main>
     )
   }
 
-  // BULK MODE
+  // ── BULK MODE ──
   if (isBulk) {
     return (
-      <>
-        <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "48px 24px 100px", gap: "28px" }}>
-          <h2 style={{ textAlign: "center" }}>
-            Bulk Scan
-          </h2>
-          <p style={{ fontSize: "16px", color: "var(--text-muted)", textAlign: "center" }}>
-            Upload up to {MAX_BULK} photos for a full room cleanout report.
-          </p>
-
-          {/* Condition */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
-            <p className="card-label" style={{ marginBottom: 0 }}>Condition for all items</p>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {CONDITIONS.map(c => (
-                <button key={c} onClick={() => setCondition(c)} className={condition === c ? "condition-chip active" : "condition-chip"}>{c}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Upload area */}
-          {!bulkScanning && (
-            <>
-              <button onClick={() => bulkInputRef.current?.click()} className="upload-box" style={{ maxWidth: "400px", aspectRatio: "auto", padding: "40px 24px" }}>
-                <div style={{ textAlign: "center" }}>
-                  <Upload size={32} style={{ color: "var(--text-muted)", marginBottom: "8px" }} />
-                  <p style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-muted)" }}>
-                    {bulkFiles.length ? `${bulkFiles.length} photo${bulkFiles.length > 1 ? "s" : ""} selected` : "Tap to select photos"}
-                  </p>
-                  <p style={{ fontSize: "13px", color: "var(--text-faint)", marginTop: "4px" }}>Select multiple files at once</p>
-                </div>
-              </button>
-              <input ref={bulkInputRef} type="file" accept="image/*" multiple onChange={handleBulkFiles} style={{ display: "none" }} />
-            </>
-          )}
-
-          {/* Thumbnails */}
-          {bulkFiles.length > 0 && !bulkScanning && (
-            <div className="bulk-grid">
-              {bulkFiles.map((bf, i) => (
-                <div key={i} className="bulk-thumb">
-                  <img src={bf.preview} alt={`Item ${i + 1}`} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Progress */}
-          {bulkScanning && (
-            <div className="bulk-progress">
-              <div className="bulk-progress-track">
-                <div className="bulk-progress-fill" style={{ width: `${(bulkProgress / bulkTotal) * 100}%` }} />
-              </div>
-              <p style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-muted)" }}>
-                <span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px", borderColor: "var(--border)", borderTopColor: "var(--green-accent)" }} />
-                Scanning {bulkProgress} of {bulkTotal} items...
-              </p>
-            </div>
-          )}
-
-          {/* Start button */}
-          {bulkFiles.length > 0 && !bulkScanning && (
-            <button onClick={handleBulkScan} className="btn-primary">
-              Scan {bulkFiles.length} Item{bulkFiles.length > 1 ? "s" : ""}
+      <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "48px 24px 100px", gap: "28px", background: "#0a0f0a", color: "#fff" }}>
+        <h2 style={{ textAlign: "center" }}>Bulk Scan</h2>
+        <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.5)", textAlign: "center" }}>Upload up to {MAX_BULK} photos for a full room cleanout report.</p>
+        <div style={{ display: "flex", gap: "8px" }}>
+          {CONDITIONS.map(c => (
+            <button key={c} onClick={() => setCondition(c)} className="scan-condition-pill" data-active={condition === c}>{c}</button>
+          ))}
+        </div>
+        {!bulkScanning && (
+          <>
+            <button onClick={() => bulkInputRef.current?.click()} className="scan-upload-zone" style={{ maxWidth: "400px", aspectRatio: "auto", padding: "40px 24px" }}>
+              <Upload size={32} style={{ color: "rgba(255,255,255,0.3)", marginBottom: "8px" }} />
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{bulkFiles.length ? `${bulkFiles.length} photos selected` : "Tap to select photos"}</p>
             </button>
-          )}
-
-          {error && (
-            <p style={{ color: "#d64545", fontSize: "14px", fontWeight: "600", textAlign: "center", maxWidth: "360px", padding: "12px 20px", background: "rgba(214,69,69,0.08)", borderRadius: "12px", border: "1px solid rgba(214,69,69,0.15)" }}>{error}</p>
-          )}
-
-          <button onClick={() => router.push("/scan")} className="btn-sm ghost">Switch to Single Scan</button>
-        </main>
-      </>
+            <input ref={bulkInputRef} type="file" accept="image/*" multiple onChange={handleBulkFiles} style={{ display: "none" }} />
+          </>
+        )}
+        {bulkFiles.length > 0 && !bulkScanning && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: "6px", width: "100%", maxWidth: "400px" }}>
+            {bulkFiles.map((bf, i) => (
+              <div key={i} style={{ aspectRatio: "1", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <img src={bf.preview} alt={`Item ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            ))}
+          </div>
+        )}
+        {bulkScanning && (
+          <div style={{ width: "100%", maxWidth: "400px", textAlign: "center" }}>
+            <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden", marginBottom: "12px" }}>
+              <div style={{ height: "100%", width: `${(bulkProgress / bulkTotal) * 100}%`, background: "var(--green-accent)", transition: "width 0.3s" }} />
+            </div>
+            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>Scanning {bulkProgress} of {bulkTotal}...</p>
+          </div>
+        )}
+        {bulkFiles.length > 0 && !bulkScanning && (
+          <button onClick={handleBulkScan} className="btn-primary glow" style={{ padding: "16px 32px" }}>Scan {bulkFiles.length} Items</button>
+        )}
+        {error && <p style={{ color: "#e74c3c", fontSize: "13px", textAlign: "center", maxWidth: "360px" }}>{error}</p>}
+        <button onClick={() => router.push("/scan")} className="btn-sm ghost" style={{ color: "rgba(255,255,255,0.4)" }}>Switch to Single Scan</button>
+      </main>
     )
   }
 
-  // SINGLE MODE - Dark camera viewfinder UI
-  const cornerStyle = (pos: string): React.CSSProperties => ({
-    position: "absolute",
-    width: "32px", height: "32px",
-    borderColor: "var(--green-accent)",
-    borderStyle: "solid", borderWidth: 0,
-    animation: "cornerFocus 0.5s ease-out",
-    ...(pos === "tl" ? { top: 0, left: 0, borderTopWidth: "3px", borderLeftWidth: "3px", borderTopLeftRadius: "8px" } : {}),
-    ...(pos === "tr" ? { top: 0, right: 0, borderTopWidth: "3px", borderRightWidth: "3px", borderTopRightRadius: "8px" } : {}),
-    ...(pos === "bl" ? { bottom: 0, left: 0, borderBottomWidth: "3px", borderLeftWidth: "3px", borderBottomLeftRadius: "8px" } : {}),
-    ...(pos === "br" ? { bottom: 0, right: 0, borderBottomWidth: "3px", borderRightWidth: "3px", borderBottomRightRadius: "8px" } : {}),
-  })
+  // ── FULL-SCREEN SCANNING OVERLAY ──
+  const scanOverlay = loading && preview && (
+    <AnimatePresence>
+      <motion.div
+        key="scan-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="scan-overlay"
+      >
+        {/* Photo background */}
+        <div className="scan-overlay-photo">
+          <img src={preview} alt="Scanning" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div className="scan-overlay-gradient" />
+        </div>
 
+        {/* Scanning effects */}
+        <div className="scan-overlay-effects">
+          {/* Sweep line */}
+          <motion.div
+            className="scan-sweep-line"
+            animate={{ top: ["0%", "100%", "0%"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          />
+
+          {/* Detection boxes */}
+          <motion.div className="scan-detect-box" style={{ top: "20%", left: "15%", width: "30%", height: "25%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2, delay: 1, repeat: Infinity, repeatDelay: 3 }} />
+          <motion.div className="scan-detect-box" style={{ top: "45%", right: "10%", width: "35%", height: "20%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2, delay: 2.5, repeat: Infinity, repeatDelay: 3 }} />
+          <motion.div className="scan-detect-box" style={{ bottom: "25%", left: "20%", width: "25%", height: "15%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2, delay: 4, repeat: Infinity, repeatDelay: 3 }} />
+        </div>
+
+        {/* Status text */}
+        <div className="scan-overlay-status">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={scanStep}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="scan-overlay-text"
+            >
+              {SCAN_STEPS[scanStep]}
+            </motion.p>
+          </AnimatePresence>
+
+          {/* Progress bar */}
+          <div className="scan-overlay-progress">
+            <motion.div
+              className="scan-overlay-progress-fill"
+              style={{ width: `${scanProgress}%` }}
+            />
+          </div>
+          <p className="scan-overlay-percent">{Math.round(scanProgress)}%</p>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  )
+
+  // ── SINGLE SCAN MODE ──
   return (
     <>
-      <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", background: "#0a0f0a", color: "#fff", padding: "0 0 120px", gap: "0" }}>
-
-        {/* Scan counter bar at top */}
+      {scanOverlay}
+      <main className="scan-page">
+        {/* Scan counter pill */}
         {!isPro() && (
-          <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.06)" }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: "var(--green-accent)", borderRadius: "0 2px 2px 0", transition: "width 0.5s ease" }} />
+          <motion.div
+            className="scan-counter-pill"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Aperture size={12} />
+            {remaining} scan{remaining !== 1 ? "s" : ""} left this month
+          </motion.div>
+        )}
+
+        {/* Viewfinder area - 60% of screen */}
+        <div className="scan-viewfinder-container">
+          <div
+            className="scan-viewfinder"
+            onClick={() => !preview && fileInputRef.current?.click()}
+          >
+            {preview ? (
+              <>
+                <img src={preview} alt="Preview" className="scan-viewfinder-img" />
+                <button onClick={(e) => { e.stopPropagation(); setPreview(null); setImageData(null); setExtraImages([]) }} className="scan-viewfinder-clear" aria-label="Clear photo">
+                  <X size={18} />
+                </button>
+              </>
+            ) : (
+              <div className="scan-viewfinder-empty">
+                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                  <Camera size={40} style={{ color: "rgba(255,255,255,0.2)" }} />
+                </motion.div>
+                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.3)", marginTop: "8px" }}>Point your camera at any item</p>
+              </div>
+            )}
+
+            {/* Corner brackets with pulse */}
+            {["tl", "tr", "bl", "br"].map(pos => (
+              <motion.div
+                key={pos}
+                className={`scan-corner scan-corner-${pos}`}
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            ))}
+
+            {/* Scanning line */}
+            {!preview && (
+              <motion.div
+                className="scan-line"
+                animate={{ top: ["5%", "95%", "5%"] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Multi-photo slots */}
+        {imageData && (
+          <div className="scan-photo-slots">
+            <div className="scan-photo-slot main">
+              <img src={preview!} alt="Main" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <span className="scan-photo-label">Main</span>
+            </div>
+            {extraImages.map((img, i) => (
+              <div key={i} className="scan-photo-slot">
+                <img src={img.preview} alt={`Angle ${i + 2}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <button onClick={() => removeExtraImage(i)} className="scan-photo-remove" aria-label="Remove photo"><X size={10} /></button>
+                <span className="scan-photo-label">{i === 0 ? "Back" : "Detail"}</span>
+              </div>
+            ))}
+            {extraImages.length < 2 && (
+              <button onClick={() => extraInputRef.current?.click()} className="scan-photo-slot add" aria-label="Add another photo">
+                <Plus size={18} style={{ color: "rgba(255,255,255,0.3)" }} />
+                <span className="scan-photo-label">Add</span>
+              </button>
+            )}
+            <p className="scan-photo-tip">More angles = better accuracy</p>
           </div>
         )}
 
-        <div style={{ padding: "32px 24px", textAlign: "center", width: "100%" }}>
-          <h2 style={{ fontSize: "32px", color: "#fff", marginBottom: "8px" }}>What are you selling?</h2>
-          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
-            {isPro() ? "Unlimited scans" : `${remaining} of ${FREE_SCAN_LIMIT} free scans remaining`}
-          </p>
-        </div>
-
-        {/* Upload zone with viewfinder brackets */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          style={{
-            position: "relative", width: "calc(100% - 48px)", maxWidth: "340px", aspectRatio: "1",
-            borderRadius: "16px", overflow: "hidden", cursor: "pointer",
-            background: preview ? "transparent" : "rgba(255,255,255,0.03)",
-            border: preview ? "none" : "1px solid rgba(255,255,255,0.08)",
-            margin: "0 24px",
-          }}
-        >
-          {preview ? (
-            <img src={preview} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <>
-              {/* Scan line animation */}
-              <div style={{ position: "absolute", left: "12px", right: "12px", height: "1px", background: "linear-gradient(90deg, transparent, var(--green-accent), transparent)", animation: "scanLine 3s ease-in-out infinite", opacity: 0.5 }} />
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                <Camera size={32} style={{ color: "rgba(255,255,255,0.3)" }} />
-                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)" }}>Tap to upload</p>
-              </div>
-            </>
-          )}
-          {/* Corner brackets */}
-          <div style={cornerStyle("tl")} />
-          <div style={cornerStyle("tr")} />
-          <div style={cornerStyle("bl")} />
-          <div style={cornerStyle("br")} />
-        </div>
-
-        {/* Condition selector */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", padding: "24px 24px 0" }}>
-          <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.4)" }}>Condition</p>
-          <div style={{ display: "flex", gap: "8px" }}>
+        {/* Condition pills */}
+        <div className="scan-condition-row">
+          <p className="scan-section-label">Condition</p>
+          <div className="scan-condition-pills">
             {CONDITIONS.map(c => (
               <button
                 key={c}
                 onClick={() => setCondition(c)}
-                style={{
-                  padding: "10px 20px", fontSize: "13px", fontWeight: 500,
-                  fontFamily: "var(--font-body)", borderRadius: "50px",
-                  border: condition === c ? "none" : "1px solid rgba(255,255,255,0.12)",
-                  background: condition === c ? "var(--green-accent)" : "transparent",
-                  color: condition === c ? "#fff" : "rgba(255,255,255,0.5)",
-                  cursor: "pointer", transition: "all 0.2s ease",
-                  boxShadow: condition === c ? "0 0 16px rgba(90,171,117,0.3)" : "none",
-                }}
+                className="scan-condition-pill"
+                data-active={condition === c}
+                aria-label={`Set condition to ${c}`}
               >
                 {c}
               </button>
@@ -493,77 +506,52 @@ export default function Scan() {
           </div>
         </div>
 
-        {/* Multi-image: add more photos */}
-        {imageData && extraImages.length < 2 && (
-          <div style={{ padding: "0 24px" }}>
-            <button onClick={() => extraInputRef.current?.click()} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "rgba(255,255,255,0.5)", fontSize: "13px", fontFamily: "var(--font-body)", cursor: "pointer", width: "100%", maxWidth: "340px", justifyContent: "center" }}>
-              <Camera size={14} /> Add another angle ({extraImages.length + 1}/3 photos)
-            </button>
-            {extraImages.length > 0 && (
-              <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
-                {extraImages.map((img, i) => (
-                  <div key={i} style={{ width: "48px", height: "48px", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <img src={img.preview} alt={`Photo ${i + 2}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </div>
-                ))}
-              </div>
+        {/* Action buttons */}
+        <div className="scan-actions">
+          <button
+            onClick={handleIdentify}
+            disabled={!imageData || loading}
+            className="scan-identify-btn"
+            aria-label="Identify this item"
+          >
+            {loading ? (
+              <span className="spinner" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "#fff", width: "18px", height: "18px" }} />
+            ) : (
+              "Identify This Item"
             )}
+          </button>
+
+          <div className="scan-secondary-btns">
+            <button onClick={() => cameraInputRef.current?.click()} className="scan-secondary-btn" aria-label="Take photo with camera">
+              <Camera size={16} /> Take Photo
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="scan-secondary-btn" aria-label="Upload a photo">
+              <Upload size={16} /> Upload Photo
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Hidden inputs */}
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} style={{ display: "none" }} />
         <input ref={extraInputRef} type="file" accept="image/*" onChange={handleExtraImage} style={{ display: "none" }} />
 
-        {/* Action buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "calc(100% - 48px)", maxWidth: "340px", padding: "24px 0" }}>
-          <button
-            onClick={handleIdentify}
-            disabled={!imageData || loading}
-            className="btn-primary glow"
-            style={{
-              width: "100%", padding: "18px", fontSize: "16px",
-              opacity: !imageData || loading ? 0.4 : 1,
-            }}
-          >
-            {loading && <span className="spinner" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "#fff" }} />}
-            {loading
-              ? (scanStep === 1 ? "Uploading image..." : scanStep === 2 ? "Analyzing item..." : scanStep === 3 ? "Researching prices..." : "Preparing results...")
-              : "Identify This Item"}
-          </button>
-
-          {/* Progress bar during scan */}
-          {loading && (
-            <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
-              <div style={{ height: "100%", background: "var(--green-accent)", transition: "width 0.5s ease", width: `${scanStep * 25}%` }} />
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-            <button onClick={() => cameraInputRef.current?.click()} style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50px", padding: "10px 20px", color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 500, fontFamily: "var(--font-body)", cursor: "pointer", transition: "all 0.2s ease" }}>
-              Take Photo
-            </button>
-            <button onClick={() => router.push("/scan?bulk=true")} style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50px", padding: "10px 20px", color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 500, fontFamily: "var(--font-body)", cursor: "pointer", transition: "all 0.2s ease" }}>
-              Bulk Scan
-            </button>
-          </div>
-        </div>
-
+        {/* Error state */}
         {error && !showManualEntry && (
-          <div style={{ margin: "0 24px", padding: "16px 20px", background: "rgba(214,69,69,0.1)", borderRadius: "12px", border: "1px solid rgba(214,69,69,0.2)", maxWidth: "340px", textAlign: "center" }}>
-            <p style={{ color: "#e74c3c", fontSize: "13px", fontWeight: 500, marginBottom: "10px" }}>{error}</p>
-            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-              <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary" style={{ fontSize: "12px" }}>Try Again</button>
-              <button onClick={() => setShowManualEntry(true)} className="btn-sm ghost" style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.15)" }}>Enter Manually</button>
+          <motion.div className="scan-error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <p>{error}</p>
+            <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+              <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary">Try Again</button>
+              <button onClick={() => setShowManualEntry(true)} className="btn-sm ghost" style={{ color: "rgba(255,255,255,0.6)" }}>Enter Manually</button>
             </div>
-          </div>
+          </motion.div>
         )}
 
+        {/* Manual entry */}
         {showManualEntry && (
-          <div style={{ margin: "0 24px", padding: "20px", background: "var(--surface)", borderRadius: "14px", border: "1px solid var(--border)", maxWidth: "340px" }}>
+          <motion.div className="scan-manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <p style={{ fontSize: "14px", fontWeight: 600, color: "#fff", marginBottom: "4px" }}>What is this item?</p>
-            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "12px" }}>Type the item name and we will look up pricing for you.</p>
+            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "12px" }}>Type the item name and we&apos;ll look it up for you.</p>
             {fallbackTips.length > 0 && (
               <div style={{ marginBottom: "12px", padding: "10px", background: "rgba(255,255,255,0.04)", borderRadius: "8px" }}>
                 <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginBottom: "4px" }}>Tips for next time:</p>
@@ -575,17 +563,15 @@ export default function Scan() {
                 value={manualName} onChange={e => setManualName(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleManualIdentify()}
                 placeholder="e.g. KitchenAid Stand Mixer"
-                style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff", fontFamily: "var(--font-body)", fontSize: "14px" }}
+                className="scan-manual-input"
                 autoFocus
               />
               <button onClick={handleManualIdentify} disabled={manualLoading || !manualName.trim()} className="btn-sm primary" style={{ flexShrink: 0 }}>
                 {manualLoading ? "..." : "Go"}
               </button>
             </div>
-            <button onClick={() => { setShowManualEntry(false); setError(null); setFallbackTips([]) }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "12px", fontFamily: "var(--font-body)", cursor: "pointer", marginTop: "8px" }}>
-              Cancel
-            </button>
-          </div>
+            <button onClick={() => { setShowManualEntry(false); setError(null); setFallbackTips([]) }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "12px", fontFamily: "var(--font-body)", cursor: "pointer", marginTop: "8px" }}>Cancel</button>
+          </motion.div>
         )}
       </main>
     </>
