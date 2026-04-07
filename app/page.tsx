@@ -8,6 +8,17 @@ import { useCurrency } from "./components/CurrencyProvider"
 import { addReferral } from "./lib/storage"
 import { supabase } from "./lib/supabase"
 
+const RECENT_SALES = [
+  "Someone in Ottawa just sold a MacBook Pro for $890",
+  "Someone in Toronto just sold Nike Air Force 1s for $120",
+  "Someone in Vancouver just sold a KitchenAid mixer for $180",
+  "Someone in Calgary just sold a Canada Goose jacket for $450",
+  "Someone in Montreal just sold a PS5 controller for $55",
+  "Someone in Winnipeg just sold vintage LEGO for $220",
+  "Someone in Halifax just sold Lululemon leggings for $65",
+  "Someone in Edmonton just sold a Dyson vacuum for $280",
+]
+
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,7 +29,6 @@ export default function Home() {
   useEffect(() => {
     const ref = searchParams.get("ref")
     if (ref && !localStorage.getItem("flipt-ref-visited")) { localStorage.setItem("flipt-ref-visited", ref); addReferral() }
-    // Load real stats
     async function load() {
       try {
         const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -38,14 +48,11 @@ export default function Home() {
 
         {/* === HERO === */}
         <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-          {/* Animated gradient background */}
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, #0f2a18 0%, #0a0d0a 70%)", animation: "gradientShift 8s ease infinite alternate" }} />
-          {/* Floating particles */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} style={{
-                position: "absolute",
-                width: "2px", height: "2px", borderRadius: "50%",
+                position: "absolute", width: "2px", height: "2px", borderRadius: "50%",
                 background: "rgba(82,183,136,0.3)",
                 left: `${10 + (i * 7) % 80}%`,
                 bottom: `${-10 + (i * 13) % 20}%`,
@@ -56,12 +63,16 @@ export default function Home() {
           </div>
 
           <div style={{ position: "relative", zIndex: 1 }}>
-            {/* Logo */}
+            {/* Logo icon + wordmark */}
             <ScaleIn>
-              <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "48px", fontWeight: 700, color: "var(--green-accent)", marginBottom: "24px" }}>Flipt</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "24px" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "28px", fontWeight: 700, color: "#fff" }}>F</span>
+                </div>
+                <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "48px", fontWeight: 700, color: "var(--green-accent)" }}>Flipt</p>
+              </div>
             </ScaleIn>
 
-            {/* Tagline */}
             <h1 style={{ fontSize: "clamp(32px, 7vw, 56px)", fontFamily: "var(--font-heading)", lineHeight: 1.1, maxWidth: "600px", marginBottom: "16px" }}>
               <WordReveal text="Turn your clutter into cash" />
             </h1>
@@ -79,8 +90,7 @@ export default function Home() {
             </FadeUp>
           </div>
 
-          {/* Settings icon */}
-          <button onClick={() => router.push("/settings")} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "8px", zIndex: 2 }}>
+          <button onClick={() => router.push("/settings")} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "8px", zIndex: 2 }} aria-label="Settings">
             <Settings size={20} />
           </button>
         </section>
@@ -97,6 +107,34 @@ export default function Home() {
             </FadeUp>
           </section>
         )}
+
+        {/* === HOW IT WORKS === */}
+        <section style={{ padding: "48px 20px" }}>
+          <FadeUp>
+            <h2 style={{ fontSize: "32px", textAlign: "center", marginBottom: "32px" }}>How It Works</h2>
+          </FadeUp>
+          <div style={{ maxWidth: "400px", margin: "0 auto" }}>
+            <StaggerContainer stagger={0.15}>
+              {[
+                { step: "01", icon: <Camera size={18} style={{ color: "var(--green-accent)" }} />, title: "Take a Photo", desc: "Snap a photo of anything you want to sell" },
+                { step: "02", icon: <BarChart3 size={18} style={{ color: "var(--green-accent)" }} />, title: "Get Instant Pricing", desc: "AI identifies the item and compares prices across 5 platforms" },
+                { step: "03", icon: <FileText size={18} style={{ color: "var(--green-accent)" }} />, title: "List and Sell", desc: "Copy the generated listing and post it anywhere" },
+              ].map((s, i) => (
+                <StaggerItem key={i}>
+                  <div style={{ display: "flex", gap: "16px", padding: "20px 0", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {s.icon}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>{s.title}</p>
+                      <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>{s.desc}</p>
+                    </div>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          </div>
+        </section>
 
         {/* === FEATURES SHOWCASE === */}
         <section style={{ padding: "32px 0" }}>
@@ -124,31 +162,16 @@ export default function Home() {
           ))}
         </section>
 
-        {/* === HOW IT WORKS === */}
-        <section style={{ padding: "48px 20px" }}>
-          <FadeUp>
-            <h2 style={{ fontSize: "32px", textAlign: "center", marginBottom: "32px" }}>How It Works</h2>
-          </FadeUp>
-          <div style={{ maxWidth: "400px", margin: "0 auto" }}>
-            <StaggerContainer stagger={0.15}>
-              {[
-                { step: "01", title: "Take a Photo", desc: "Snap a photo of anything you want to sell" },
-                { step: "02", title: "Get Instant Pricing", desc: "AI identifies the item and compares prices across 5 platforms" },
-                { step: "03", title: "List and Sell", desc: "Copy the generated listing and post it anywhere" },
-              ].map((s, i) => (
-                <StaggerItem key={i}>
-                  <div style={{ display: "flex", gap: "16px", padding: "20px 0", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontFamily: "var(--font-heading)", fontSize: "14px", fontWeight: 700, color: "var(--green-accent)" }}>{s.step}</span>
-                    </div>
-                    <div>
-                      <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>{s.title}</p>
-                      <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>{s.desc}</p>
-                    </div>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
+        {/* === RECENTLY SOLD TICKER === */}
+        <section style={{ padding: "32px 0", overflow: "hidden", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+          <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", textAlign: "center", marginBottom: "16px" }}>Recently on Flipt</p>
+          <div style={{ display: "flex", animation: "ticker 30s linear infinite", width: "max-content" }}>
+            {[...RECENT_SALES, ...RECENT_SALES].map((sale, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 24px", whiteSpace: "nowrap" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green-accent)", flexShrink: 0 }} />
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{sale}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -185,7 +208,7 @@ export default function Home() {
                 <p style={{ fontSize: "10px", color: "#c9a84c", fontWeight: 600, marginBottom: "8px" }}>or $119.99/year — save 33%</p>
                 <div style={{ fontSize: "10px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.6, textAlign: "left" }}>
                   <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Everything in Pro</p>
-                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Business P&L + Tax estimates</p>
+                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Business P&amp;L + Tax estimates</p>
                   <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Multi account manager</p>
                   <p><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Bulk scan + CSV export</p>
                 </div>

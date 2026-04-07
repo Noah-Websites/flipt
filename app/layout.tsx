@@ -7,6 +7,7 @@ import BottomNav from "./components/BottomNav"
 import Footer from "./components/Footer"
 import CurrencyProvider from "./components/CurrencyProvider"
 import SmoothScroll from "./components/SmoothScroll"
+import AddToHomeScreen from "./components/AddToHomeScreen"
 
 export const metadata: Metadata = {
   title: "Flipt — Turn Clutter into Cash",
@@ -23,8 +24,9 @@ export const metadata: Metadata = {
     description: "AI-powered resale pricing for Canadians.",
   },
   viewport: { width: "device-width", initialScale: 1, viewportFit: "cover" },
-  themeColor: "#0a0d0a",
+  themeColor: "#2d6a4f",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Flipt" },
+  icons: { icon: "/icon.png", apple: "/icon.png" },
 }
 
 export default function RootLayout({
@@ -39,8 +41,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Flipt" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body>
         <ThemeProvider>
@@ -51,6 +56,7 @@ export default function RootLayout({
             {children}
             <Footer />
             <BottomNav />
+            <AddToHomeScreen />
           </AppShell>
           </CurrencyProvider>
           </AuthProvider>

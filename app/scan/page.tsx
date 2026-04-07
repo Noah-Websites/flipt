@@ -25,9 +25,10 @@ function incrementScanCount(): number {
 
 const SCAN_STEPS = [
   "Identifying your item...",
-  "Checking 5 resale platforms...",
-  "Calculating the best price...",
-  "Almost ready...",
+  "Searching 5 resale platforms...",
+  "Calculating the best price for Canada...",
+  "Checking for rare or collectible value...",
+  "Preparing your results...",
 ]
 
 const CONDITIONS = ["Poor", "Fair", "Good", "Excellent"]
@@ -88,14 +89,15 @@ export default function Scan() {
     }
   }, [loading])
 
-  // Cycle through scan steps — tuned for Sonnet (~5-8s total)
+  // Cycle through scan steps — 5 messages, ~2s each
   useEffect(() => {
     if (!loading) return
     setScanStep(0)
     const timers = [
-      setTimeout(() => setScanStep(1), 1500),
-      setTimeout(() => setScanStep(2), 3500),
+      setTimeout(() => setScanStep(1), 2000),
+      setTimeout(() => setScanStep(2), 4000),
       setTimeout(() => setScanStep(3), 6000),
+      setTimeout(() => setScanStep(4), 8000),
     ]
     return () => timers.forEach(clearTimeout)
   }, [loading])
@@ -370,15 +372,42 @@ export default function Scan() {
           />
 
           {/* Detection boxes */}
-          <motion.div className="scan-detect-box" style={{ top: "20%", left: "15%", width: "30%", height: "25%" }}
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
-            transition={{ duration: 2, delay: 1, repeat: Infinity, repeatDelay: 3 }} />
-          <motion.div className="scan-detect-box" style={{ top: "45%", right: "10%", width: "35%", height: "20%" }}
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
-            transition={{ duration: 2, delay: 2.5, repeat: Infinity, repeatDelay: 3 }} />
-          <motion.div className="scan-detect-box" style={{ bottom: "25%", left: "20%", width: "25%", height: "15%" }}
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
-            transition={{ duration: 2, delay: 4, repeat: Infinity, repeatDelay: 3 }} />
+          <motion.div className="scan-detect-box" style={{ top: "15%", left: "10%", width: "35%", height: "25%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 0.8, 0.8, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2.5, delay: 0.5, repeat: Infinity, repeatDelay: 2 }} />
+          <motion.div className="scan-detect-box" style={{ top: "40%", right: "8%", width: "30%", height: "22%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 0.8, 0.8, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2.5, delay: 2, repeat: Infinity, repeatDelay: 2 }} />
+          <motion.div className="scan-detect-box" style={{ bottom: "22%", left: "18%", width: "28%", height: "18%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 0.8, 0.8, 0], scale: [0.8, 1, 1, 0.9] }}
+            transition={{ duration: 2.5, delay: 3.5, repeat: Infinity, repeatDelay: 2 }} />
+          <motion.div className="scan-detect-box" style={{ top: "30%", left: "40%", width: "20%", height: "15%" }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: [0, 0.6, 0.6, 0], scale: [0.85, 1, 1, 0.9] }}
+            transition={{ duration: 2, delay: 5, repeat: Infinity, repeatDelay: 3 }} />
+
+          {/* Particle effects around edges */}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <motion.div
+              key={`particle-${i}`}
+              style={{
+                position: "absolute",
+                width: "3px", height: "3px", borderRadius: "50%",
+                background: "var(--green-accent)",
+                left: `${10 + (i * 12) % 80}%`,
+                top: `${5 + (i * 11) % 90}%`,
+              }}
+              animate={{
+                opacity: [0, 0.8, 0],
+                scale: [0.5, 1.5, 0.5],
+                y: [0, -20, 0],
+              }}
+              transition={{
+                duration: 2 + i * 0.3,
+                delay: i * 0.4,
+                repeat: Infinity,
+              }}
+            />
+          ))}
         </div>
 
         {/* Status text */}

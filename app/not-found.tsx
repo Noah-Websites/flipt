@@ -1,26 +1,37 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Home, ArrowLeft } from "lucide-react"
+import { Scan } from "lucide-react"
 
 export default function NotFound() {
   const router = useRouter()
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", textAlign: "center" }}>
-      <p style={{ fontFamily: "var(--font-heading)", fontSize: "120px", fontWeight: 700, color: "var(--border)", lineHeight: 1 }}>404</p>
-      <h2 style={{ fontSize: "24px", marginBottom: "8px" }}>Page not found</h2>
-      <p style={{ fontSize: "15px", color: "var(--text-secondary)", maxWidth: "320px", marginBottom: "28px" }}>
-        The page you are looking for does not exist or has been moved.
+    <main style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      minHeight: "100vh", padding: "48px 24px", textAlign: "center", gap: "20px",
+    }}>
+      {/* Flipt logo */}
+      <div style={{ width: "64px", height: "64px", borderRadius: "18px", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "36px", fontWeight: 700, color: "#fff" }}>F</span>
+      </div>
+
+      <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700 }}>
+        Looks like this item has already been sold
+      </h1>
+
+      <p style={{ fontSize: "15px", color: "var(--text-secondary)", maxWidth: "340px", lineHeight: 1.6 }}>
+        The page you&apos;re looking for doesn&apos;t exist. Maybe it sold faster than expected.
       </p>
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button onClick={() => router.back()} className="btn-secondary" style={{ padding: "12px 24px", fontSize: "14px", gap: "6px" }}>
-          <ArrowLeft size={16} /> Go Back
+
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
+        <button onClick={() => router.push("/")} className="btn-primary" style={{ padding: "14px 28px" }}>
+          Back to Home
         </button>
-        <button onClick={() => router.push("/")} className="btn-primary" style={{ padding: "12px 24px", fontSize: "14px", gap: "6px" }}>
-          <Home size={16} /> Home
+        <button onClick={() => router.push("/scan")} className="btn-secondary" style={{ padding: "14px 28px", gap: "6px" }}>
+          <Scan size={16} /> Scan Something
         </button>
       </div>
-    </div>
+    </main>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, Star, Link2, Check, Copy, ExternalLink, ShoppingCart, MapPin, ArrowRight, Shield, Search as SearchIcon, Tag, Clock, Award, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, Activity, Users, Rss, Pencil, X, Share2, Bookmark, ChevronDown } from "lucide-react"
+import { Heart, Star, Link2, Check, Copy, ExternalLink, ShoppingCart, MapPin, ArrowRight, Shield, Search as SearchIcon, Tag, Clock, Award, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, Activity, Users, Rss, Pencil, X, Share2, Bookmark, ChevronDown, Scan } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import PriceChart from "../components/PriceChart"
 import CollapsibleSection from "../components/CollapsibleSection"
@@ -78,6 +78,9 @@ export default function Results() {
   const [liveLoading, setLiveLoading] = useState(false)
   const [liveTime, setLiveTime] = useState<string | null>(null)
   const [priceTier, setPriceTier] = useState<PriceTier>("fair")
+  const [rating, setRating] = useState<"up" | "down" | null>(null)
+  const [feedbackText, setFeedbackText] = useState("")
+  const [feedbackSent, setFeedbackSent] = useState(false)
 
   const fetchLivePrices = useCallback(async (itemName: string) => {
     setLiveLoading(true)
@@ -436,6 +439,40 @@ export default function Results() {
           {/* AI Disclaimer */}
           <div className="ai-disclaimer">Price estimates are AI-generated and may vary. Always verify on your chosen platform before listing.</div>
 
+          {/* Satisfaction rating */}
+          <div className="card" style={{ textAlign: "center" }}>
+            <p style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px" }}>Was this accurate?</p>
+            {!rating ? (
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                <button onClick={() => setRating("up")} style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid var(--border)", background: "var(--surface-alt)", cursor: "pointer", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Thumbs up">
+                  <span role="img" aria-label="thumbs up">&#128077;</span>
+                </button>
+                <button onClick={() => setRating("down")} style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid var(--border)", background: "var(--surface-alt)", cursor: "pointer", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Thumbs down">
+                  <span role="img" aria-label="thumbs down">&#128078;</span>
+                </button>
+              </div>
+            ) : rating === "up" ? (
+              <p style={{ fontSize: "13px", color: "var(--green-accent)", fontWeight: 600 }}>Thanks for the feedback!</p>
+            ) : !feedbackSent ? (
+              <div>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>What did we get wrong?</p>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input value={feedbackText} onChange={e => setFeedbackText(e.target.value)} placeholder="e.g. Price seems too high" className="input" style={{ flex: 1, fontSize: "13px", minHeight: "40px" }} autoFocus />
+                  <button onClick={async () => {
+                    if (!feedbackText.trim()) return
+                    try {
+                      const { supabase } = await import("../lib/supabase")
+                      await supabase.from("scan_feedback").insert({ item_name: result.item, feedback: feedbackText, user_id: user?.id || null, scan_data: { valueLow: result.valueLow, valueHigh: result.valueHigh } })
+                    } catch {}
+                    setFeedbackSent(true)
+                  }} className="btn-sm primary">Send</button>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: "13px", color: "var(--green-accent)", fontWeight: 600 }}>Thanks! We&apos;ll use this to improve.</p>
+            )}
+          </div>
+
           {/* Action buttons */}
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "8px 0" }}>
             <div style={{ display: "flex", gap: "10px" }}>
@@ -459,6 +496,11 @@ export default function Results() {
               )}
               <button onClick={handleShare} className="btn-sm ghost"><Share2 size={14} /></button>
             </div>
+
+            {/* Prominent scan another */}
+            <button onClick={() => router.push("/scan")} className="btn-primary glow" style={{ width: "100%", padding: "18px", fontSize: "16px", marginTop: "4px" }}>
+              <Scan size={18} /> Scan Another Item
+            </button>
           </div>
         </div>
       </main>
