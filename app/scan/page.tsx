@@ -24,10 +24,10 @@ function incrementScanCount(): number {
 }
 
 const SCAN_STEPS = [
-  "Identifying item...",
-  "Checking prices...",
-  "Finding best platforms...",
-  "Preparing results...",
+  "Identifying your item...",
+  "Checking 5 resale platforms...",
+  "Calculating the best price...",
+  "Almost ready...",
 ]
 
 const CONDITIONS = ["Poor", "Fair", "Good", "Excellent"]
@@ -70,16 +70,17 @@ export default function Scan() {
     if (count >= FREE_SCAN_LIMIT && !isPro()) setShowPaywall(true)
   }, [])
 
-  // Smooth progress animation during scan
+  // Smooth progress animation — faster curve for Sonnet (~6s target)
   useEffect(() => {
     if (loading) {
       setScanProgress(0)
       let current = 0
       progressRef.current = setInterval(() => {
-        current += 0.4 + Math.random() * 0.3
-        if (current > 95) current = 95
+        // Fast start, slow toward end — feels responsive
+        const speed = current < 50 ? 1.2 + Math.random() * 0.8 : current < 80 ? 0.5 + Math.random() * 0.4 : 0.15
+        current = Math.min(current + speed, 95)
         setScanProgress(current)
-      }, 150)
+      }, 100)
       return () => { if (progressRef.current) clearInterval(progressRef.current) }
     } else {
       if (progressRef.current) clearInterval(progressRef.current)
@@ -87,14 +88,14 @@ export default function Scan() {
     }
   }, [loading])
 
-  // Cycle through scan steps
+  // Cycle through scan steps — tuned for Sonnet (~5-8s total)
   useEffect(() => {
     if (!loading) return
     setScanStep(0)
     const timers = [
-      setTimeout(() => setScanStep(1), 3000),
-      setTimeout(() => setScanStep(2), 7000),
-      setTimeout(() => setScanStep(3), 12000),
+      setTimeout(() => setScanStep(1), 1500),
+      setTimeout(() => setScanStep(2), 3500),
+      setTimeout(() => setScanStep(3), 6000),
     ]
     return () => timers.forEach(clearTimeout)
   }, [loading])
@@ -105,7 +106,8 @@ export default function Scan() {
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement("canvas")
-      const MAX = 1200
+      // 800px max for speed — still plenty of detail for AI identification
+      const MAX = 800
       let w = img.width, h = img.height
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX }
@@ -115,7 +117,8 @@ export default function Scan() {
       const ctx = canvas.getContext("2d")
       if (ctx) {
         ctx.drawImage(img, 0, 0, w, h)
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
+        // 0.75 quality — smaller payload, faster upload
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75)
         setImageData(dataUrl.split(",")[1])
         setMediaType("image/jpeg")
       }
@@ -278,7 +281,8 @@ export default function Scan() {
           <div className="paywall-card" style={{ maxWidth: "360px", width: "100%", textAlign: "center", margin: "0 auto" }}>
             <p style={{ fontSize: "12px", fontWeight: 800, color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Flipt Pro</p>
             <p className="gradient-text" style={{ fontSize: "48px", fontWeight: 800, lineHeight: 1.2 }}>$4.99</p>
-            <p style={{ fontSize: "14px", color: "var(--text-faint)", marginBottom: "24px" }}>per month</p>
+            <p style={{ fontSize: "14px", color: "var(--text-faint)", marginBottom: "4px" }}>per month</p>
+            <p style={{ fontSize: "12px", color: "var(--green-accent)", fontWeight: 600, marginBottom: "24px" }}>or $39.99/year — save 33%</p>
             <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", textAlign: "left" }}>
               {["Unlimited scans", "Priority AI analysis", "Full scan history", "Multi-photo support"].map(f => (
                 <li key={f} style={{ fontSize: "14px", fontWeight: 500, color: "var(--text)", padding: "8px 0", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: "10px" }}>

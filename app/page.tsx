@@ -171,7 +171,8 @@ export default function Home() {
               <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--green-light)", border: "1px solid var(--green-accent)", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
                 <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "var(--green-accent)", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Most Popular</div>
                 <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--green-accent)", marginBottom: "4px" }}>Pro</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$5.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "4px" }}>$4.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <p style={{ fontSize: "10px", color: "var(--green-accent)", fontWeight: 600, marginBottom: "8px" }}>or $39.99/year — save 33%</p>
                 <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "14px" }}>Unlimited scans + all features</p>
                 <button onClick={() => router.push("/settings")} className="btn-primary" style={{ width: "100%", padding: "10px", fontSize: "12px" }}>Upgrade</button>
               </div>
@@ -180,7 +181,8 @@ export default function Home() {
               <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--surface)", border: "1px solid #c9a84c", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
                 <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "#c9a84c", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Best for Power Sellers</div>
                 <p style={{ fontSize: "12px", fontWeight: 600, color: "#c9a84c", marginBottom: "4px" }}>Business</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$14.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "4px" }}>$14.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
+                <p style={{ fontSize: "10px", color: "#c9a84c", fontWeight: 600, marginBottom: "8px" }}>or $119.99/year — save 33%</p>
                 <div style={{ fontSize: "10px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.6, textAlign: "left" }}>
                   <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Everything in Pro</p>
                   <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Business P&L + Tax estimates</p>

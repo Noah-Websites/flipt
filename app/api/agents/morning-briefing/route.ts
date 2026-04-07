@@ -13,7 +13,7 @@ export async function GET() {
     const proCount = all.filter(p => p.plan === "pro").length
     const bizCount = all.filter(p => p.plan === "business").length
     const newToday = all.filter(p => new Date(p.created_at) >= today).length
-    const mrr = proCount * 5.99 + bizCount * 14.99
+    const mrr = proCount * 4.99 + bizCount * 14.99
 
     // Latest trends
     const { data: trendActs } = await supabase.from("agent_activity").select("action").eq("agent_name", "Trend Spotter Agent").like("action", "Trending:%").order("created_at", { ascending: false }).limit(1)

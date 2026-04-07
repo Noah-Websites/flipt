@@ -1,9 +1,13 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { TrendingUp, Lightbulb, Check, RefreshCw, Loader2 } from "lucide-react"
+import { TrendingUp, Lightbulb, Check, RefreshCw, Loader2, Lock, BarChart3, Clock, Sparkles, Globe } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem, SlideIn, CountUp } from "../components/Motion"
 import { getMarketEmail, setMarketEmail } from "../lib/storage"
+import { useAuth } from "../components/AuthProvider"
+import { useSubscription } from "../lib/useSubscription"
 import { supabase } from "../lib/supabase"
 
 interface TrendItem {
@@ -19,7 +23,18 @@ function timeAgo(iso: string) {
   return `${Math.floor(hr / 24)}d ago`
 }
 
+const GATE_FEATURES = [
+  { icon: TrendingUp, text: "Weekly trending items in your city" },
+  { icon: BarChart3, text: "Platform performance data" },
+  { icon: Clock, text: "Best time to sell reports" },
+  { icon: Sparkles, text: "AI-powered market predictions" },
+  { icon: Globe, text: "Canadian resale market insights" },
+]
+
 export default function Market() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { canAccess, plan } = useSubscription(user?.id)
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -29,11 +44,8 @@ export default function Market() {
   const [refreshing, setRefreshing] = useState(false)
 
   const loadTrending = useCallback(async () => {
-    // Set a 2s max for loading state
     const timer = setTimeout(() => setLoading(false), 2000)
-
     try {
-      // Load latest trending data from agent_activity
       const { data } = await supabase
         .from("agent_activity")
         .select("details, created_at")
@@ -51,8 +63,7 @@ export default function Market() {
           }
         } catch { /* parse error */ }
       }
-    } catch { /* supabase error - page still renders */ }
-
+    } catch { /* supabase error */ }
     clearTimeout(timer)
     setLoading(false)
   }, [])
@@ -63,8 +74,6 @@ export default function Market() {
     setMounted(true)
     loadTrending()
   }, [loadTrending])
-
-  // No auto-trigger — user clicks Refresh manually
 
   async function refreshData() {
     setRefreshing(true)
@@ -89,6 +98,138 @@ export default function Market() {
 
   const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
 
+  // ===== BUSINESS GATE =====
+  if (!canAccess("market_report")) {
+    return (
+      <PageTransition>
+        <main style={{ minHeight: "100vh", padding: "0 0 120px", position: "relative", overflow: "hidden" }}>
+
+          {/* Blurred preview behind the gate */}
+          <div style={{ position: "absolute", inset: 0, filter: "blur(8px)", opacity: 0.4, pointerEvents: "none", overflow: "hidden" }}>
+            <div style={{ padding: "32px 20px 20px", borderBottom: "2px solid #c9a84c" }}>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "28px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Flipt Market</p>
+              <p style={{ fontSize: "12px", color: "#c9a84c", fontWeight: 500 }}>{dateStr}</p>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="trending-item" style={{ opacity: 0.6 }}>
+                  <div className="trending-rank">{i}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: "14px", width: `${60 + i * 5}%`, background: "var(--surface-alt)", borderRadius: "4px", marginBottom: "6px" }} />
+                    <div style={{ height: "10px", width: "80%", background: "var(--surface-alt)", borderRadius: "4px", marginBottom: "6px" }} />
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <div style={{ height: "18px", width: "60px", background: "var(--surface-alt)", borderRadius: "50px" }} />
+                      <div style={{ height: "18px", width: "40px", background: "var(--surface-alt)", borderRadius: "50px" }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ height: "20px", width: "50px", background: "var(--surface-alt)", borderRadius: "4px" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Upgrade prompt overlay */}
+          <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "48px 24px", textAlign: "center" }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              style={{ maxWidth: "400px", width: "100%" }}
+            >
+              {/* Lock icon */}
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                style={{
+                  width: "80px", height: "80px", borderRadius: "24px",
+                  background: "linear-gradient(135deg, rgba(201,168,76,0.15) 0%, rgba(201,168,76,0.05) 100%)",
+                  border: "1px solid rgba(201,168,76,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 24px",
+                }}
+              >
+                <Lock size={32} style={{ color: "#c9a84c" }} />
+              </motion.div>
+
+              {/* Heading */}
+              <h2 style={{
+                fontFamily: "var(--font-heading)", fontSize: "32px", fontWeight: 700,
+                lineHeight: 1.15, marginBottom: "12px",
+              }}>
+                Market Intelligence
+              </h2>
+
+              {/* Subheading */}
+              <p style={{
+                fontSize: "15px", color: "var(--text-secondary)", lineHeight: 1.6,
+                marginBottom: "32px", maxWidth: "340px", margin: "0 auto 32px",
+              }}>
+                Get weekly trending items, platform performance data, and market insights — exclusive to Business subscribers.
+              </p>
+
+              {/* Feature list */}
+              <div style={{
+                display: "flex", flexDirection: "column", gap: "12px",
+                textAlign: "left", marginBottom: "32px",
+                padding: "20px 24px",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "16px",
+              }}>
+                {GATE_FEATURES.map(({ icon: Icon, text }) => (
+                  <div key={text} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{
+                      width: "28px", height: "28px", borderRadius: "8px",
+                      background: "rgba(201,168,76,0.1)",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      <Icon size={14} style={{ color: "#c9a84c" }} />
+                    </div>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: "var(--text)" }}>{text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA button */}
+              <motion.button
+                onClick={() => router.push("/settings#subscription")}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  width: "100%", padding: "18px 32px", fontSize: "16px", fontWeight: 700,
+                  fontFamily: "var(--font-body)",
+                  background: "linear-gradient(135deg, #c9a84c 0%, #d4b85a 50%, #c9a84c 100%)",
+                  color: "#000", border: "none", borderRadius: "16px", cursor: "pointer",
+                  boxShadow: "0 4px 24px rgba(201,168,76,0.3), 0 0 0 1px rgba(201,168,76,0.1)",
+                  transition: "box-shadow 0.2s ease",
+                }}
+              >
+                Upgrade to Business
+              </motion.button>
+
+              {/* Pricing note */}
+              <p style={{
+                fontSize: "13px", color: "var(--text-secondary)", marginTop: "12px",
+              }}>
+                $14.99/month or $119.99/year
+              </p>
+
+              {/* Current plan indicator */}
+              <p style={{
+                fontSize: "11px", color: "var(--text-faint)", marginTop: "16px",
+              }}>
+                You&apos;re currently on the <span style={{ fontWeight: 700, textTransform: "capitalize" }}>{plan}</span> plan
+              </p>
+            </motion.div>
+          </div>
+        </main>
+      </PageTransition>
+    )
+  }
+
+  // ===== FULL MARKET REPORT (Business subscribers) =====
   return (
     <PageTransition>
       <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>

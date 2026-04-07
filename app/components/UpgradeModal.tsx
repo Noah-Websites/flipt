@@ -10,8 +10,8 @@ interface Props {
 }
 
 const PLAN_INFO = {
-  pro: { name: "Pro", price: "$5.99", period: "month", color: "var(--green-accent)", icon: Sparkles },
-  business: { name: "Business", price: "$14.99", period: "month", color: "var(--gold)", icon: Crown },
+  pro: { name: "Pro", price: "$4.99", period: "month", yearly: "$39.99/year", color: "var(--green-accent)", icon: Sparkles },
+  business: { name: "Business", price: "$14.99", period: "month", yearly: "$119.99/year", color: "var(--gold)", icon: Crown },
 }
 
 export default function UpgradeModal({ feature, plan, onClose }: Props) {
@@ -35,9 +35,12 @@ export default function UpgradeModal({ feature, plan, onClose }: Props) {
           This feature is included in Flipt {info.name}. Upgrade to access it and more.
         </p>
 
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "4px", marginBottom: "20px" }}>
-          <span style={{ fontFamily: "var(--font-heading)", fontSize: "36px", fontWeight: 700, color: info.color }}>{info.price}</span>
-          <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>/{info.period}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: "36px", fontWeight: 700, color: info.color }}>{info.price}</span>
+            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>/{info.period}</span>
+          </div>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>or {info.yearly} <span style={{ fontSize: "11px", fontWeight: 700, color: plan === "pro" ? "var(--green-accent)" : "var(--gold)" }}>Save 33%</span></p>
         </div>
 
         <button

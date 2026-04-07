@@ -22,9 +22,10 @@ export default function Terms() {
           Flipt offers a free tier that includes 5 scans per month. Additional scans can be earned through our referral program (3 bonus scans per referral).
         </p>
         <p>
-          <strong>Flipt Pro</strong> ($4.99/month) provides unlimited scans, priority AI analysis, listing history, and multi-photo support.
-          Subscriptions renew automatically each month. You may cancel at any time; cancellation takes effect at the end of the current billing period.
-          No refunds are provided for partial months.
+          <strong>Flipt Pro</strong> ($4.99/month or $39.99/year) provides unlimited scans, priority AI analysis, listing history, and multi-photo support.
+          <strong>Flipt Business</strong> ($14.99/month or $119.99/year) includes everything in Pro plus business P&amp;L tracking, market intelligence, bulk scanning, and multi-account management.
+          Subscriptions renew automatically. You may cancel at any time; cancellation takes effect at the end of the current billing period.
+          No refunds are provided for partial billing periods.
         </p>
 
         <h3>3. AI Accuracy Disclaimer</h3>

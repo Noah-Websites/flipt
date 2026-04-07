@@ -21,7 +21,7 @@ import {
   type PlanTier, type NotifPrefs,
 } from "../lib/storage"
 
-type SubModal = null | { plan: PlanTier; period: "weekly" | "monthly" | "yearly" }
+type SubModal = null | { plan: PlanTier; period: "monthly" | "yearly" }
 type ConfirmModal = null | "history" | "closet" | "account"
 
 const PRO_FEATURES = [
@@ -146,7 +146,7 @@ export default function Settings() {
     setNotifPrefs(updated)
   }
 
-  function handlePlanSelect(p: PlanTier, period: "weekly" | "monthly" | "yearly") {
+  function handlePlanSelect(p: PlanTier, period: "monthly" | "yearly") {
     setSubModal({ plan: p, period })
   }
 
@@ -241,16 +241,15 @@ export default function Settings() {
               Flipt {subModal.plan === "pro" ? "Pro" : "Business"}
             </span>
             <h3 style={{ fontSize: "20px", margin: "8px 0" }}>
-              {subModal.period === "weekly" && (subModal.plan === "pro" ? "$1.99/week" : "$4.99/week")}
-              {subModal.period === "monthly" && (subModal.plan === "pro" ? "$5.99/month" : "$14.99/month")}
-              {subModal.period === "yearly" && (subModal.plan === "pro" ? "$47.99/year" : "$119.99/year")}
+              {subModal.period === "monthly" && (subModal.plan === "pro" ? "$4.99/month" : "$14.99/month")}
+              {subModal.period === "yearly" && (subModal.plan === "pro" ? "$39.99/year" : "$119.99/year")}
             </h3>
 
             <div style={{ display: "flex", gap: "6px", justifyContent: "center", margin: "16px 0" }}>
-              {(["weekly", "monthly", "yearly"] as const).map(p => (
-                <button key={p} onClick={() => setSubModal({ ...subModal, period: p })} className={`mp-filter-chip ${subModal.period === p ? "active" : ""}`} style={{ fontSize: "12px", padding: "6px 14px" }}>
-                  {p === "weekly" ? "Weekly" : p === "monthly" ? "Monthly" : "Yearly"}
-                  {p === "yearly" && <span style={{ marginLeft: "4px", fontSize: "10px", fontWeight: 700, color: subModal.plan === "pro" ? "var(--green-accent)" : "var(--gold)" }}> Save 33%</span>}
+              {(["monthly", "yearly"] as const).map(p => (
+                <button key={p} onClick={() => setSubModal({ ...subModal, period: p })} className={`mp-filter-chip ${subModal.period === p ? "active" : ""}`} style={{ fontSize: "12px", padding: "6px 14px", position: "relative" }}>
+                  {p === "monthly" ? "Monthly" : "Yearly"}
+                  {p === "yearly" && <span style={{ marginLeft: "4px", fontSize: "10px", fontWeight: 700, color: subModal.plan === "pro" ? "var(--green-accent)" : "var(--gold)" }}>Save 33%</span>}
                 </button>
               ))}
             </div>
@@ -359,8 +358,8 @@ export default function Settings() {
                 <div className="upgrade-card pro-card" style={{ flex: 1, minWidth: "200px" }}>
                   <Sparkles size={24} style={{ margin: "0 auto 8px", opacity: 0.8 }} />
                   <p style={{ fontSize: "18px", fontWeight: 700, fontFamily: "var(--font-heading)", marginBottom: "4px" }}>Pro</p>
-                  <p style={{ fontSize: "28px", fontWeight: 700, marginBottom: "4px" }}>$5.99<span style={{ fontSize: "14px", opacity: 0.7 }}>/mo</span></p>
-                  <p style={{ fontSize: "12px", opacity: 0.7, marginBottom: "16px" }}>or $47.99/year (save 33%)</p>
+                  <p style={{ fontSize: "28px", fontWeight: 700, marginBottom: "4px" }}>$4.99<span style={{ fontSize: "14px", opacity: 0.7 }}>/mo</span></p>
+                  <p style={{ fontSize: "12px", opacity: 0.7, marginBottom: "16px" }}>or $39.99/year <span style={{ color: "#52b788", fontWeight: 700 }}>save 33%</span></p>
                   <button onClick={() => handlePlanSelect("pro", "monthly")} style={{ width: "100%", padding: "10px", borderRadius: "50px", background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                     Upgrade to Pro
                   </button>
@@ -369,7 +368,7 @@ export default function Settings() {
                   <Crown size={24} style={{ margin: "0 auto 8px", color: "var(--gold)" }} />
                   <p style={{ fontSize: "18px", fontWeight: 700, fontFamily: "var(--font-heading)", marginBottom: "4px" }}>Business</p>
                   <p style={{ fontSize: "28px", fontWeight: 700, marginBottom: "4px" }}>$14.99<span style={{ fontSize: "14px", opacity: 0.7 }}>/mo</span></p>
-                  <p style={{ fontSize: "12px", opacity: 0.7, marginBottom: "16px" }}>or $119.99/year (save 33%)</p>
+                  <p style={{ fontSize: "12px", opacity: 0.7, marginBottom: "16px" }}>or $119.99/year <span style={{ color: "#c9a84c", fontWeight: 700 }}>save 33%</span></p>
                   <button onClick={() => handlePlanSelect("business", "monthly")} style={{ width: "100%", padding: "10px", borderRadius: "50px", background: "rgba(201,168,76,0.2)", color: "var(--gold)", border: "1px solid rgba(201,168,76,0.4)", fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                     Upgrade to Business
                   </button>

@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { label: "Feed", path: "/feed", Icon: Rss },
 ]
 
-const MORE_ITEMS = [
+const MORE_ITEMS: { label: string; path: string; Icon: typeof Home; badge?: boolean; planBadge?: "pro" | "business" }[] = [
   { label: "Profile", path: "/profile", Icon: User },
   { label: "History", path: "/history", Icon: Clock },
   { label: "My Closet", path: "/closet", Icon: Archive },
@@ -21,8 +21,8 @@ const MORE_ITEMS = [
   { label: "Following", path: "/following", Icon: Users },
   { label: "Notifications", path: "/notifications", Icon: Bell },
   { label: "Referrals", path: "/referral", Icon: Gift },
-  { label: "Market Report", path: "/market", Icon: BarChart3 },
-  { label: "Business", path: "/business", Icon: Briefcase },
+  { label: "Market Report", path: "/market", Icon: BarChart3, planBadge: "business" },
+  { label: "Business", path: "/business", Icon: Briefcase, planBadge: "business" },
   { label: "Hidden Gems", path: "/gems", Icon: Gem },
   { label: "Accounts", path: "/accounts", Icon: LayoutGrid },
   { label: "Settings", path: "/settings", Icon: Settings },
@@ -51,13 +51,16 @@ export default function BottomNav() {
     <>
       {showMore && (
         <div ref={menuRef} className="more-menu" style={{ maxHeight: "400px", overflowY: "auto" }}>
-          {MORE_ITEMS.map(({ label, path, Icon, badge }) => (
+          {MORE_ITEMS.map(({ label, path, Icon, badge, planBadge }) => (
             <button key={path} onClick={() => { router.push(path); setShowMore(false) }} className="more-menu-item">
               <span style={{ position: "relative", display: "flex" }}>
                 <Icon size={18} />
                 {badge && watchCount > 0 && <span className="nav-badge" style={{ top: "-4px", right: "-6px", position: "absolute" }}>{watchCount}</span>}
               </span>
               {label}
+              {planBadge === "business" && (
+                <span style={{ marginLeft: "auto", padding: "1px 6px", fontSize: "9px", fontWeight: 700, borderRadius: "50px", background: "rgba(201,168,76,0.12)", color: "#c9a84c", textTransform: "uppercase", letterSpacing: "0.04em" }}>Business</span>
+              )}
             </button>
           ))}
         </div>

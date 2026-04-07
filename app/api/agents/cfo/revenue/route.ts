@@ -10,7 +10,7 @@ export async function GET() {
     const bizCount = all.filter(p => p.plan === "business").length
     const freeCount = all.filter(p => !p.plan || p.plan === "free").length
     const newToday = all.filter(p => new Date(p.created_at) >= today).length
-    const mrr = proCount * 5.99 + bizCount * 14.99
+    const mrr = proCount * 4.99 + bizCount * 14.99
     const arr = mrr * 12
 
     const { count: scansToday } = await supabase.from("scans").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString())

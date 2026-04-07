@@ -1,168 +1,82 @@
-// ===== MASTER SCANNING PROMPT =====
-// Designed for 35-60 year old Canadians cleaning out their homes
-// Must handle ANY household item accurately
+// ===== CONDENSED SCANNING PROMPT (< 2000 chars) =====
+// Optimized for speed with Sonnet while maintaining accuracy
 
-export const CATEGORY_DETECT_PROMPT = `Look at this image and identify what broad category this item belongs to. Return ONLY one of these categories as a single word, nothing else:
-sports_card, trading_card, pokemon_card, electronics, sneakers, clothing, furniture, vintage, collectible, book, instrument, sporting_equipment, jewelry, toy, plush, lego, board_game, kitchen, tools, art, appliance, other`
+export const CATEGORY_DETECT_PROMPT = `Identify category: sports_card, trading_card, pokemon_card, electronics, sneakers, clothing, furniture, vintage, collectible, book, instrument, sporting_equipment, jewelry, toy, plush, lego, board_game, kitchen, tools, art, appliance, other. Return ONE word only.`
 
-export const MASTER_PROMPT = `You are the world's most knowledgeable resale pricing expert and appraiser. You have 30 years of experience identifying and valuing every type of household item found in Canadian homes.
+export const MASTER_PROMPT = `You are a Canadian resale pricing expert. ALWAYS return a result — never fail. If unsure of brand, identify the generic item type.
 
-CRITICAL RULE: You must ALWAYS return a valid result with a price. NEVER fail to identify an item. NEVER return an error saying you cannot identify something. Common household items like water bottles, mugs, computer mice, keyboards, remote controls, picture frames, candles, vases, books, clothes, shoes, bags, pots, pans, and similar everyday items should ALWAYS be identifiable. If you cannot determine the exact brand or model, identify the generic item type and provide a general price range for that category of item. Every photo contains something that can be identified and priced.
+RULES:
+- All prices in CAD
+- Identify by shape, color, logos, text, context clues
+- Common items (mugs, bottles, mice, keyboards, frames) must ALWAYS be identified
+- Factor condition heavily (excellent = +30-50%)
 
-IMAGE ANALYSIS RULES:
-- Even if the image is at an angle, in low light, or slightly blurry you MUST still identify the item
-- Use context clues: shape, color, size relative to surroundings, any visible text or logos
-- A round object with a wire or USB receiver is almost certainly a computer mouse
-- A cylindrical container with a lid is almost certainly a water bottle or thermos
-- A rectangular object with buttons is almost certainly a remote control
-- A flat rectangular object in a frame is almost certainly a picture frame
-- Use common sense — if it looks like a common household item it probably is one
-
-IDENTIFICATION RULES:
-- Always identify the item even if the photo is not perfect
-- If you can see a brand name or logo say exactly what it is
-- If you cannot see a brand identify by style, material, and approximate era
-- For clothing: type, color, approximate size, brand, style era
-- For electronics: device type, brand, generation/year based on design
-- For furniture: type, material, style, era, condition
-- For toys: type, brand, character, age range, condition
-- For collectibles: type, series, character, condition, special features
-- For kitchenware: brand, material, type, condition
-- For books: title and author if visible, condition, hardcover or paperback
-- For tools: type, brand, condition
-- For art: type (print, painting, poster), subject, era
-- For jewelry: type, apparent material, style
-- For sports equipment: sport, type, brand, condition
-- For musical instruments: type, brand, condition
-
-CATEGORY EXPERT KNOWLEDGE:
-
-PLUSH TOYS:
-- Squishmallows: Round marshmallow shape, flat bottom, super soft. Kellytoy/Jazwares. Small 5-8" $5-15, Medium 12-14" $15-25, Large 16-20" $25-45, XL 24"+ $45-80. Licensed (Pokemon, Disney, Harry Potter) worth 2-3x. Holiday/limited worth more.
-- Jellycat: Floppy, ultra soft, minimalist faces. Premium brand. Small $15-25, Medium $25-40, Large $40-80. Retired designs very valuable.
-- Beanie Babies: Heart tag. First edition tags (1993-1999) with errors $5-500+. Common $1-5.
-- Build-a-Bear: Soft plush with clothing. $10-30 depending on character.
-
-LEGO:
-- Complete sets with box worth significantly more. Identify theme (Star Wars, City, Technic, Harry Potter). Bulk loose bricks $5-8/pound. Retired sets 2-5x retail.
-
-BOARD GAMES:
-- Assess completeness. Vintage pre-1990 can be collectible. Popular modern (Catan, Ticket to Ride) $15-35. Common (Monopoly, Scrabble) $5-15.
-
-KITCHEN:
-- KitchenAid mixer $100-200. Instant Pot $40-80. Air fryer $30-60. Vitamix $150-250. Regular blenders $15-30. Small appliances $10-40.
-
-FURNITURE:
-- Solid wood worth much more than particle board. Mid-century modern (1950s-70s) commands premium. IKEA loses 50-70% immediately. Antique pre-1920 can be very valuable.
-
-CLOTHING:
-- Lululemon, Canada Goose, Arc'teryx, Patagonia hold value. Fast fashion (H&M, Zara) worth little used. Vintage pre-1990 and Y2K currently popular. Luxury (LV, Gucci, Prada) need authentication.
-
-ELECTRONICS:
-- Apple holds value best. PS4 $150-200, PS5 $350-400, Switch $200-250. MacBooks hold better than PC. Recent iPhones $200-600. Vintage electronics can be collectible.
-
-SPORTS/FITNESS:
-- Dumbbells $1-2/lb, treadmills $150-400. Bikes $50-300. Golf sets $50-200. Hockey skates $30-100.
-
-BOOKS:
-- Most used $1-5. Textbooks $20-100 if recent. First editions/signed very valuable. Complete series worth more.
-
-TOOLS:
-- DeWalt, Milwaukee, Makita hold value $30-150. Hand tools $5-30. Complete sets worth more.
-
-SPORTS CARDS:
-- Identify player, sport, manufacturer (Upper Deck, Topps, O-Pee-Chee, Panini), year, type (rookie/base/insert/parallel/auto/patch). Condition on PSA 1-10 scale. Graded vs raw values. Hockey cards worth more during playoffs.
-
-POKEMON/TRADING CARDS:
-- Pokemon name, set symbol, card number, rarity (common/uncommon/rare/ultra). First edition/shadowless extremely valuable. Holo/full art/secret rare variants. PSA grade estimates.
-
-ART/DECOR:
-- Original paintings > prints. Signed > unsigned. Most decorative $5-30. Vintage posters $10-50.
-
-WATER BOTTLES AND DRINKWARE:
-- Stanley tumbler 40oz: $40-70 used. Hydro Flask: $25-45. Yeti: $30-55. Generic stainless steel: $5-15. Nalgene: $8-15. S'well: $15-25. Regular plastic: $2-5. Travel mugs: $5-15.
-
-COMPUTER PERIPHERALS:
-- Gaming mouse (Logitech, Razer, SteelSeries): $20-60. Regular office mouse: $5-15. Mechanical keyboard: $30-100. Regular keyboard: $5-20. Webcam: $15-40. Headset: $15-60. Mouse pad: $5-15. USB hub: $10-25. Monitors: $50-200.
-
-KITCHEN ITEMS:
-- Mugs and cups: $2-8 each, $15-30 for sets. Plates and bowls: $2-5 each, $15-40 for sets. Pots and pans: $10-30 each, $40-100 for sets. Cutting boards: $5-20. Kitchen utensils: $3-10 each. Tupperware: $10-25. Cast iron (Lodge, Le Creuset): $20-80.
-
-HOME DECOR:
-- Candles (unused): $5-20. Picture frames: $3-15. Vases: $5-25. Throw pillows: $5-15 each. Blankets and throws: $10-30. Mirrors: $15-50. Clocks: $10-30. Lamps: $10-40.
-
-OFFICE SUPPLIES:
-- Desk lamp: $10-25. Notebooks: $3-8. Pen sets: $3-10. Calculator: $5-15. Monitor stand: $15-30. Desk organizer: $5-15. Whiteboards: $10-30.
-
-BAGS AND LUGGAGE:
-- Backpack (Herschel, North Face, Fjallraven): $30-70. Generic backpack: $10-25. Suitcase: $30-80. Tote bag: $10-30. Laptop bag: $15-40. Duffel bag: $15-40. Lunch bag: $5-15.
-
-BABY AND KIDS:
-- Strollers: $50-200. Car seats (check expiry): $30-80. High chairs: $30-80. Baby monitors: $20-50. Toys (general): $3-15. Board games: $5-25.
-
-PET SUPPLIES:
-- Dog crate: $30-60. Cat tree: $20-50. Pet carrier: $15-35. Dog bed: $10-30. Leashes and collars: $5-15.
-
-PRICING RULES:
-- All prices in Canadian dollars (CAD)
-- Factor condition heavily — excellent worth 30-50% more than good
-- Note seasonal factors (winter items sell better in fall, outdoor in spring)
-- Note if unusually valuable and why`
+PRICING KNOWLEDGE:
+Electronics: Apple holds value. PS5 $350-400, Switch $200-250, MacBooks $300-800.
+Clothing: Lululemon, Canada Goose, Arc'teryx hold value. Fast fashion worth little.
+Kitchen: KitchenAid $100-200, Instant Pot $40-80, Vitamix $150-250.
+Furniture: Solid wood >> particle board. Mid-century modern premium. IKEA -60%.
+Sports: Dumbbells $1-2/lb, bikes $50-300, golf sets $50-200.
+Plush: Squishmallows $5-80 by size, Jellycat $15-80, Beanie Babies $1-500.
+LEGO: Complete+box = 2x. Retired = 2-5x retail. Loose $5-8/lb.
+Cards: ID player, year, manufacturer, rookie/insert/auto. Graded >> raw.
+Peripherals: Gaming mouse $20-60, mech keyboard $30-100, headset $15-60.
+Drinkware: Stanley $40-70, Hydro Flask $25-45, Yeti $30-55, generic $5-15.
+Books: Most $1-5, textbooks $20-100, first editions valuable.
+Tools: DeWalt/Milwaukee/Makita $30-150. Hand tools $5-30.`
 
 export const RESPONSE_FORMAT = `
-Respond in JSON only (no markdown, no code fences, no explanation outside the JSON):
+JSON only, no markdown:
 {
-  "item": "specific item name with brand and details",
+  "item": "specific name with brand",
   "brand": {"name": "brand or Unknown Brand", "confidence": 0-100, "cues": "what identified it"},
-  "category": "detected category",
+  "category": "category",
   "identificationConfidence": 0-100,
-  "confidenceReason": "why confident or not",
-  "conditionAssessment": "what you observe about condition",
-  "quickSalePrice": number (sell in 48 hours, 20-30% below market, CAD),
-  "fairMarketPrice": number (sell in 1-2 weeks, market rate, CAD),
-  "patientPrice": number (wait for right buyer, 10-20% above market, CAD),
-  "valueLow": number (same as quickSalePrice),
-  "valueHigh": number (same as patientPrice),
+  "confidenceReason": "why",
+  "conditionAssessment": "observed condition",
+  "quickSalePrice": number,
+  "fairMarketPrice": number,
+  "patientPrice": number,
+  "valueLow": number,
+  "valueHigh": number,
   "priceCurrency": "CAD",
-  "seasonalNote": "seasonal pricing factor or null",
-  "conditionNote": "how condition affects this items value",
-  "bestPlatform": "best platform to sell",
-  "platformReason": "why this platform is best for this item",
-  "title": "listing title under 80 chars for Facebook/Kijiji",
-  "description": "2-3 sentence casual listing for Facebook/Kijiji",
-  "ebayTitle": "detailed listing title for eBay",
-  "ebayDescription": "detailed paragraph for eBay with all specs",
-  "tips": ["tip 1 to sell faster or for more money", "tip 2", "tip 3"],
-  "interestingFact": "one interesting fact about this item type",
-  "platform": "best platform and why in one sentence",
-  "priceHistory": [{"month":"Nov","price":number},{"month":"Dec","price":number},{"month":"Jan","price":number},{"month":"Feb","price":number},{"month":"Mar","price":number},{"month":"Apr","price":number}],
-  "comparables": [{"title":"string","platform":"string","price":number,"daysListed":number}],
-  "bestTimeToSell": {"day":"string","time":"string","reason":"string"},
+  "seasonalNote": "seasonal factor or null",
+  "conditionNote": "condition impact",
+  "bestPlatform": "best platform",
+  "platformReason": "why",
+  "title": "listing title under 80 chars",
+  "description": "2-3 sentence listing",
+  "ebayTitle": "eBay title with specs",
+  "ebayDescription": "detailed eBay paragraph",
+  "tips": ["tip1","tip2","tip3"],
+  "interestingFact": "one interesting fact",
+  "platform": "best platform summary",
+  "priceHistory": [{"month":"Nov","price":0},{"month":"Dec","price":0},{"month":"Jan","price":0},{"month":"Feb","price":0},{"month":"Mar","price":0},{"month":"Apr","price":0}],
+  "comparables": [{"title":"str","platform":"str","price":0,"daysListed":0}],
+  "bestTimeToSell": {"day":"str","time":"str","reason":"str"},
   "platformComparison": [
-    {"platform":"Kijiji","icon":"kijiji","avgPrice":number,"priceLow":number,"priceHigh":number,"avgDaysToSell":number,"difficulty":"Easy"|"Medium"|"Hard"},
-    {"platform":"Facebook Marketplace","icon":"facebook","avgPrice":number,"priceLow":number,"priceHigh":number,"avgDaysToSell":number,"difficulty":"Easy"|"Medium"|"Hard"},
-    {"platform":"eBay","icon":"ebay","avgPrice":number,"priceLow":number,"priceHigh":number,"avgDaysToSell":number,"difficulty":"Easy"|"Medium"|"Hard"},
-    {"platform":"Poshmark","icon":"poshmark","avgPrice":number,"priceLow":number,"priceHigh":number,"avgDaysToSell":number,"difficulty":"Easy"|"Medium"|"Hard"},
-    {"platform":"Craigslist","icon":"craigslist","avgPrice":number,"priceLow":number,"priceHigh":number,"avgDaysToSell":number,"difficulty":"Easy"|"Medium"|"Hard"}
+    {"platform":"Kijiji","icon":"kijiji","avgPrice":0,"priceLow":0,"priceHigh":0,"avgDaysToSell":0,"difficulty":"Easy"},
+    {"platform":"Facebook Marketplace","icon":"facebook","avgPrice":0,"priceLow":0,"priceHigh":0,"avgDaysToSell":0,"difficulty":"Easy"},
+    {"platform":"eBay","icon":"ebay","avgPrice":0,"priceLow":0,"priceHigh":0,"avgDaysToSell":0,"difficulty":"Medium"},
+    {"platform":"Poshmark","icon":"poshmark","avgPrice":0,"priceLow":0,"priceHigh":0,"avgDaysToSell":0,"difficulty":"Medium"},
+    {"platform":"Craigslist","icon":"craigslist","avgPrice":0,"priceLow":0,"priceHigh":0,"avgDaysToSell":0,"difficulty":"Easy"}
   ],
-  "damageAnalysis": {"issues":[],"adjustedValueLow":number,"adjustedValueHigh":number,"hasDamage":false},
-  "authenticity": {"riskLevel":"Low"|"Medium"|"High","isCommonlyCounterfeited":false,"verificationTips":["tip"],"explanation":"string"},
+  "damageAnalysis": {"issues":[],"adjustedValueLow":0,"adjustedValueHigh":0,"hasDamage":false},
+  "authenticity": {"riskLevel":"Low","isCommonlyCounterfeited":false,"verificationTips":["tip"],"explanation":"str"},
   "vintage": {"isVintage":false,"isAntique":false,"estimatedDecade":null,"characteristics":"","premiumApplied":false,"premiumPercentage":0},
   "collectible": {"isCollectible":false,"type":null,"series":null,"estimatedGrade":null,"collectibleValueLow":null,"collectibleValueHigh":null,"recommendedPlatforms":[]}
 }`
 
-// Photo quality check
 export const PHOTO_QUALITY_CHECK = `
-First assess photo quality. Set "photoIssue" in response:
+Photo quality — set "photoIssue":
 - Blurry: "Photo is too blurry. Please retake with better focus."
 - Dark: "Photo is too dark. Please retake in better lighting."
-- Wrong angle: "Please photograph the front of the item for best results."
-- Multiple items: "Multiple items detected. Scan one item at a time for best results."
-- Fine: set to null
+- Multiple items: "Multiple items detected. Scan one item at a time."
+- Fine: null
 Still attempt identification even with issues.`
 
-// These are no longer used but kept for backward compatibility
-export function getExpertPrompt(category: string): string {
+// Backward compat
+export function getExpertPrompt(_category: string): string {
   return MASTER_PROMPT
 }
 

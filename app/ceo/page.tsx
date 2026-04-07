@@ -26,10 +26,10 @@ const MRR_DATA = Array.from({ length: 30 }, (_, i) => ({
 
 const TRANSACTIONS = [
   // Will be replaced with real Stripe data in future
-  { user: "sarah.m@gmail.com", plan: "Pro Monthly", amount: 5.99, time: "12 min ago" },
+  { user: "sarah.m@gmail.com", plan: "Pro Monthly", amount: 4.99, time: "12 min ago" },
   { user: "james.t@outlook.com", plan: "Business Yearly", amount: 119.99, time: "34 min ago" },
-  { user: "emma.k@yahoo.com", plan: "Pro Yearly", amount: 47.99, time: "1 hr ago" },
-  { user: "omar.h@gmail.com", plan: "Pro Monthly", amount: 5.99, time: "2 hr ago" },
+  { user: "emma.k@yahoo.com", plan: "Pro Yearly", amount: 39.99, time: "1 hr ago" },
+  { user: "omar.h@gmail.com", plan: "Pro Monthly", amount: 4.99, time: "2 hr ago" },
   { user: "lisa.c@icloud.com", plan: "Business Monthly", amount: 14.99, time: "3 hr ago" },
 ]
 
@@ -109,7 +109,7 @@ export default function CEODashboard() {
     const bizCount = allProfiles.filter(p => p.plan === "business").length
     const freeCount = allProfiles.filter(p => !p.plan || p.plan === "free").length
     const newToday = allProfiles.filter(p => new Date(p.created_at) >= today).length
-    const mrr = proCount * 5.99 + bizCount * 14.99
+    const mrr = proCount * 4.99 + bizCount * 14.99
 
     // Scans today
     const { count: scansToday } = await sb.from("scans").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString())

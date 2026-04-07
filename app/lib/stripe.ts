@@ -2,12 +2,10 @@ import Stripe from "stripe"
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-// Price lookup keys for each plan/period combo
+// Price lookup keys for each plan/period combo (monthly + yearly only)
 const PRICE_CONFIGS = [
-  { plan: "pro", period: "weekly", amount: 199, interval: "week" as const, name: "Flipt Pro Weekly" },
-  { plan: "pro", period: "monthly", amount: 599, interval: "month" as const, name: "Flipt Pro Monthly" },
-  { plan: "pro", period: "yearly", amount: 4799, interval: "year" as const, name: "Flipt Pro Yearly" },
-  { plan: "business", period: "weekly", amount: 499, interval: "week" as const, name: "Flipt Business Weekly" },
+  { plan: "pro", period: "monthly", amount: 499, interval: "month" as const, name: "Flipt Pro Monthly" },
+  { plan: "pro", period: "yearly", amount: 3999, interval: "year" as const, name: "Flipt Pro Yearly" },
   { plan: "business", period: "monthly", amount: 1499, interval: "month" as const, name: "Flipt Business Monthly" },
   { plan: "business", period: "yearly", amount: 11999, interval: "year" as const, name: "Flipt Business Yearly" },
 ]

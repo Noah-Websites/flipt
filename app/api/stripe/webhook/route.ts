@@ -9,8 +9,9 @@ export const maxDuration = 30
  * Falls back to metadata, then defaults to "pro".
  */
 function planFromAmount(amountInCents: number): "pro" | "business" {
-  // Business plans: $4.99/wk (499), $14.99/mo (1499), $119.99/yr (11999)
-  if (amountInCents >= 499 && amountInCents !== 599 && amountInCents !== 199 && amountInCents !== 4799) {
+  // Business plans: $14.99/mo (1499), $119.99/yr (11999)
+  // Pro plans: $4.99/mo (499), $39.99/yr (3999)
+  if (amountInCents === 1499 || amountInCents === 11999) {
     return "business"
   }
   return "pro"
