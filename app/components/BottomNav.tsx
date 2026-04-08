@@ -46,7 +46,7 @@ export default function BottomNav() {
   return (
     <>
       {showMore && (
-        <div ref={menuRef} className="more-menu" style={{ maxHeight: "400px", overflowY: "auto" }}>
+        <div ref={menuRef} className="more-menu">
           {MORE_ITEMS.map(({ label, path, Icon, badge }) => (
             <button key={path} onClick={() => { router.push(path); setShowMore(false) }} className="more-menu-item">
               <span style={{ position: "relative", display: "flex" }}>
