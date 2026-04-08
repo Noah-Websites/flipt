@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Settings, ChevronRight, Camera, BarChart3, FileText, Scan, ArrowRight, Check } from "lucide-react"
+import { ChevronRight, Camera, BarChart3, FileText, Scan, ArrowRight, Check } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem, WordReveal, CountUp, ScaleIn, SlideIn } from "./components/Motion"
 import { useCurrency } from "./components/CurrencyProvider"
 import { addReferral } from "./lib/storage"
 import { supabase } from "./lib/supabase"
 
-const RECENT_SALES = [
+const FALLBACK_SALES = [
   "Someone in Ottawa just sold a MacBook Pro for $890",
   "Someone in Toronto just sold Nike Air Force 1s for $120",
   "Someone in Vancouver just sold a KitchenAid mixer for $180",
@@ -25,6 +25,7 @@ export default function Home() {
   const { formatPrice } = useCurrency()
   const [todayValue, setTodayValue] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [tickerItems, setTickerItems] = useState<string[]>(FALLBACK_SALES)
 
   useEffect(() => {
     const ref = searchParams.get("ref")
@@ -40,6 +41,24 @@ export default function Home() {
       setLoaded(true)
     }
     load()
+
+    // Fetch real ticker data
+    async function loadTicker() {
+      try {
+        const res = await fetch("/api/homepage/ticker")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.items && data.items.length > 0) {
+            setTickerItems(data.items.map((t: { item: string; price: number; city: string }) =>
+              `Someone in ${t.city} just sold ${t.item} for $${t.price}`
+            ))
+          }
+        }
+      } catch {
+        // Keep fallback
+      }
+    }
+    loadTicker()
   }, [searchParams])
 
   return (
@@ -89,10 +108,6 @@ export default function Home() {
               </button>
             </FadeUp>
           </div>
-
-          <button onClick={() => router.push("/settings")} style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "8px", zIndex: 2 }} aria-label="Settings">
-            <Settings size={20} />
-          </button>
         </section>
 
         {/* === STATS === */}
@@ -166,7 +181,7 @@ export default function Home() {
         <section style={{ padding: "32px 0", overflow: "hidden", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
           <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", textAlign: "center", marginBottom: "16px" }}>Recently on Flipt</p>
           <div style={{ display: "flex", animation: "ticker 30s linear infinite", width: "max-content" }}>
-            {[...RECENT_SALES, ...RECENT_SALES].map((sale, i) => (
+            {[...tickerItems, ...tickerItems].map((sale, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 24px", whiteSpace: "nowrap" }}>
                 <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green-accent)", flexShrink: 0 }} />
                 <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{sale}</p>
@@ -220,9 +235,9 @@ export default function Home() {
 
         {/* === FINAL CTA === */}
         <section style={{ minHeight: "50vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "48px 24px" }}>
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <ScaleIn>
-              <h2 style={{ fontSize: "clamp(28px, 6vw, 44px)", maxWidth: "500px", marginBottom: "24px" }}>Ready to find out what your stuff is worth?</h2>
+              <h2 style={{ fontSize: "clamp(28px, 6vw, 44px)", maxWidth: "500px", marginBottom: "24px", textAlign: "center" }}>Ready to find out what your stuff is worth?</h2>
             </ScaleIn>
             <FadeUp delay={0.3}>
               <button onClick={() => router.push("/scan")} className="btn-primary glow" style={{ padding: "18px 48px", fontSize: "16px" }}>

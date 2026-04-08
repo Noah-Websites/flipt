@@ -38,10 +38,10 @@ export default function Footer() {
       {/* Social links */}
       <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
         {[
-          { label: "Reddit", href: "https://reddit.com/r/flipt" },
-          { label: "Instagram", href: "https://instagram.com/getflipt" },
-          { label: "TikTok", href: "https://tiktok.com/@getflipt" },
-          { label: "X", href: "https://x.com/getflipt" },
+          { label: "Reddit", href: "https://www.reddit.com/user/FliptAppOfficial" },
+          { label: "Instagram", href: "https://www.instagram.com/flipt.app" },
+          { label: "TikTok", href: "https://www.tiktok.com/@flipt.app" },
+          { label: "X", href: "https://www.x.com/fliptofficial" },
         ].map(s => (
           <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-faint)", textDecoration: "none", transition: "color 0.15s" }}>
             {s.label}

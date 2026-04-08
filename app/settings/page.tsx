@@ -78,6 +78,8 @@ export default function Settings() {
   const [copied, setCopied] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const { currency, currencyCode, setCurrencyCode } = useCurrency()
+  const [notifHistory, setNotifHistory] = useState<Array<{ id: string; type: string; title: string; message: string; read: boolean; created_at: string }>>([])
+  const [notifLoading, setNotifLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -108,6 +110,16 @@ export default function Settings() {
       setNotifs(getNotifPrefs())
       if (!refCode) setRefCode(getReferralCode())
       setMounted(true)
+
+      // Load notification history
+      if (user) {
+        setNotifLoading(true)
+        try {
+          const { data: nh } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20)
+          if (nh) setNotifHistory(nh as typeof notifHistory)
+        } catch {}
+        setNotifLoading(false)
+      }
     }
     load()
 
@@ -412,7 +424,7 @@ export default function Settings() {
           </div>
 
           {/* ===== NOTIFICATIONS ===== */}
-          <div className="settings-section">
+          <div className="settings-section" id="notifications">
             <p className="settings-section-title">Notifications</p>
             <div className="settings-card">
               {([
@@ -428,6 +440,68 @@ export default function Settings() {
                   <Toggle on={notifs[key]} onChange={() => handleNotifToggle(key)} />
                 </div>
               ))}
+            </div>
+
+            {/* Notification History */}
+            <div style={{ marginTop: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px 8px" }}>
+                <p className="settings-section-title" style={{ padding: 0, marginBottom: 0 }}>Notification History</p>
+                {notifHistory.some(n => !n.read) && (
+                  <button
+                    onClick={async () => {
+                      if (!user) return
+                      await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false)
+                      setNotifHistory(prev => prev.map(n => ({ ...n, read: true })))
+                      showToast("All notifications marked as read")
+                    }}
+                    className="btn-sm ghost"
+                    style={{ padding: "3px 10px", fontSize: "10px" }}
+                  >
+                    Mark All as Read
+                  </button>
+                )}
+              </div>
+              <div className="settings-card">
+                {notifLoading ? (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }} />
+                  </div>
+                ) : notifHistory.length === 0 ? (
+                  <div style={{ padding: "24px 20px", textAlign: "center" }}>
+                    <Bell size={20} style={{ color: "var(--text-faint)", margin: "0 auto 8px" }} />
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>No notifications yet</p>
+                    <p style={{ fontSize: "11px", color: "var(--text-faint)", marginTop: "4px" }}>You&apos;ll see trending items, price drops, and updates here</p>
+                  </div>
+                ) : (
+                  notifHistory.map(n => (
+                    <div
+                      key={n.id}
+                      onClick={async () => {
+                        if (!n.read) {
+                          await supabase.from("notifications").update({ read: true }).eq("id", n.id)
+                          setNotifHistory(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
+                        }
+                      }}
+                      className="settings-row"
+                      style={{ cursor: n.read ? "default" : "pointer", background: n.read ? "transparent" : "var(--green-light)" }}
+                    >
+                      <div className="settings-row-icon" style={{ background: n.read ? "var(--surface-alt)" : "var(--green-light)" }}>
+                        <Bell size={14} style={{ color: n.read ? "var(--text-faint)" : "var(--green-accent)" }} />
+                      </div>
+                      <div className="settings-row-content">
+                        <p className="settings-row-label" style={{ fontWeight: n.read ? 400 : 600, fontSize: "13px" }}>{n.title}</p>
+                        <p className="settings-row-desc" style={{ fontSize: "11px" }}>{n.message}</p>
+                      </div>
+                      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>
+                          {(() => { const min = Math.floor((Date.now() - new Date(n.created_at).getTime()) / 60000); if (min < 60) return `${min}m`; const hr = Math.floor(min / 60); if (hr < 24) return `${hr}h`; return `${Math.floor(hr / 24)}d` })()}
+                        </span>
+                        {!n.read && <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green-accent)" }} />}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
