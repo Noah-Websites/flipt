@@ -77,14 +77,7 @@ export default function Market() {
 
   async function refreshData() {
     setRefreshing(true)
-    try {
-      const res = await fetch("/api/agents/trend-spotter")
-      const data = await res.json()
-      if (data.items) {
-        setTrending(data.items)
-        setLastUpdated(new Date().toISOString())
-      }
-    } catch { /* ignore */ }
+    await loadTrending()
     setRefreshing(false)
   }
 

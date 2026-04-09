@@ -497,6 +497,11 @@ export default function Results() {
               <button onClick={handleShare} className="btn-sm ghost"><Share2 size={14} /></button>
             </div>
 
+            {/* Sellometer shortcut */}
+            <button onClick={() => router.push(`/sellometer?item=${encodeURIComponent(result.item)}`)} className="btn-sm ghost" style={{ width: "100%", justifyContent: "center" }}>
+              <Clock size={14} /> Check best time to sell this
+            </button>
+
             {/* Prominent scan another */}
             <button onClick={() => router.push("/scan")} className="btn-primary glow" style={{ width: "100%", padding: "18px", fontSize: "16px", marginTop: "4px" }}>
               <Scan size={18} /> Scan Another Item

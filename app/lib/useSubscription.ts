@@ -11,13 +11,13 @@ const PRO_FEATURES = new Set([
   "price_history", "comparables", "best_time_to_sell", "closet",
   "marketplace_listing", "feed_posting", "watchlist", "follow_sellers",
   "hidden_gems", "share_listing", "pro_badge",
-  "full_history",
+  "full_history", "sellometer",
 ])
 
 const BUSINESS_FEATURES = new Set([
   "business_mode", "multi_account", "bulk_scan", "pdf_report",
   "cross_platform_manager", "performance_analytics", "health_scores",
-  "cross_post", "market_report",
+  "cross_post", "market_report", "offer_manager", "room_scan",
 ])
 
 export type Feature = string

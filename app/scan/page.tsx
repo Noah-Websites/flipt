@@ -38,6 +38,7 @@ export default function Scan() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const isBulk = searchParams.get("bulk") === "true"
+  const isRoom = searchParams.get("room") === "true"
 
   const [preview, setPreview] = useState<string | null>(null)
   const [imageData, setImageData] = useState<string | null>(null)
@@ -59,6 +60,9 @@ export default function Scan() {
   const [bulkProgress, setBulkProgress] = useState(0)
   const [bulkTotal, setBulkTotal] = useState(0)
   const [bulkScanning, setBulkScanning] = useState(false)
+  const [roomScanning, setRoomScanning] = useState(false)
+  const [roomImages, setRoomImages] = useState<Array<{ data: string; mediaType: string; preview: string }>>([])
+  const roomInputRef = useRef<HTMLInputElement>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -346,6 +350,84 @@ export default function Scan() {
     )
   }
 
+  // ── ROOM SCAN MODE ──
+  function handleRoomImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || roomImages.length >= 3) return
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(",")[1]
+      setRoomImages(prev => [...prev, { data: base64, mediaType: file.type || "image/jpeg", preview: URL.createObjectURL(file) }])
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function handleRoomScan() {
+    if (roomImages.length === 0) return
+    setRoomScanning(true); setError(null)
+    try {
+      const res = await fetch("/api/room-scan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: roomImages, mediaType: "image/jpeg" }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      sessionStorage.setItem("flipt-room-scan-result", JSON.stringify(data.items))
+      router.push("/room-report")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Room scan failed")
+    }
+    setRoomScanning(false)
+  }
+
+  if (isRoom) {
+    return (
+      <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "48px 24px 100px", gap: "24px", background: "#0a0f0a", color: "#fff" }}>
+        <h2 style={{ textAlign: "center" }}>Room Scan</h2>
+        <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.5)", textAlign: "center", maxWidth: "340px" }}>Take a wide photo of your room and we&apos;ll identify every sellable item.</p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", maxWidth: "400px" }}>
+          {["Include as much of the room as possible", "Good lighting helps identify items", "Works best for living rooms, bedrooms, basements, garages"].map(tip => (
+            <p key={tip} style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--green-accent)", flexShrink: 0 }} /> {tip}
+            </p>
+          ))}
+        </div>
+
+        {/* Room photos */}
+        <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "400px" }}>
+          {roomImages.map((img, i) => (
+            <div key={i} style={{ flex: 1, aspectRatio: "4/3", borderRadius: "12px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", position: "relative" }}>
+              <img src={img.preview} alt={`Room ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <button onClick={() => setRoomImages(prev => prev.filter((_, j) => j !== i))} style={{ position: "absolute", top: "4px", right: "4px", width: "20px", height: "20px", borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={10} /></button>
+            </div>
+          ))}
+          {roomImages.length < 3 && (
+            <button onClick={() => roomInputRef.current?.click()} className="scan-upload-zone" style={{ flex: 1, aspectRatio: "4/3", padding: "16px", minHeight: "120px" }}>
+              <Camera size={24} style={{ color: "rgba(255,255,255,0.2)" }} />
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>{roomImages.length === 0 ? "Add room photo" : "Add another angle"}</p>
+            </button>
+          )}
+        </div>
+        <input ref={roomInputRef} type="file" accept="image/*" onChange={handleRoomImage} style={{ display: "none" }} />
+
+        {roomScanning && (
+          <div style={{ textAlign: "center" }}>
+            <span className="spinner" style={{ borderColor: "rgba(255,255,255,0.15)", borderTopColor: "var(--green-accent)", width: "24px", height: "24px" }} />
+            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)", marginTop: "8px" }}>Scanning your room... identifying sellable items</p>
+          </div>
+        )}
+
+        {roomImages.length > 0 && !roomScanning && (
+          <button onClick={handleRoomScan} className="btn-primary glow" style={{ padding: "16px 32px", width: "100%", maxWidth: "400px" }}>Scan Room</button>
+        )}
+
+        {error && <p style={{ color: "#e74c3c", fontSize: "13px", textAlign: "center" }}>{error}</p>}
+        <button onClick={() => router.push("/scan")} className="btn-sm ghost" style={{ color: "rgba(255,255,255,0.4)" }}>Back to Single Scan</button>
+      </main>
+    )
+  }
+
   // ── FULL-SCREEN SCANNING OVERLAY ──
   const scanOverlay = loading && preview && (
     <AnimatePresence>
@@ -562,6 +644,18 @@ export default function Scan() {
               <Upload size={16} /> Upload Photo
             </button>
           </div>
+
+          {/* Room Scan */}
+          <button
+            onClick={() => {
+              if (!isPro()) { setShowPaywall(true); return }
+              router.push("/scan?room=true")
+            }}
+            className="scan-secondary-btn"
+            style={{ width: "100%", justifyContent: "center", padding: "12px", gap: "8px" }}
+          >
+            Room Scan {!isPro() && <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 6px", borderRadius: "50px", background: "rgba(201,168,76,0.12)", color: "#c9a84c" }}>Business</span>}
+          </button>
         </div>
 
         {/* Hidden inputs */}
