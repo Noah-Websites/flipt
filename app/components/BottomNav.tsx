@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, ScanLine, ShoppingBag, Rss, MoreHorizontal, Clock, Archive, Bookmark, Users, Gift, BarChart3, Settings, User, Search, MessageSquare, Calendar } from "lucide-react"
-import { getWatchlistCount } from "../lib/storage"
+import { Home, ScanLine, ShoppingBag, Rss, MoreHorizontal, Archive, Settings, User, Search, Calendar, Briefcase } from "lucide-react"
 
 const NAV_ITEMS = [
   { label: "Home", path: "/", Icon: Home },
@@ -12,30 +11,22 @@ const NAV_ITEMS = [
   { label: "Feed", path: "/feed", Icon: Rss },
 ]
 
-const MORE_ITEMS: { label: string; path: string; Icon: typeof Home; badge?: boolean }[] = [
+const MORE_ITEMS = [
   { label: "Search", path: "/search", Icon: Search },
   { label: "Settings", path: "/settings", Icon: Settings },
   { label: "Profile", path: "/profile", Icon: User },
-  { label: "Following", path: "/following", Icon: Users },
-  { label: "History", path: "/history", Icon: Clock },
   { label: "My Closet", path: "/closet", Icon: Archive },
-  { label: "Watchlist", path: "/watchlist", Icon: Bookmark, badge: true },
-  { label: "Offer Manager", path: "/offer-manager", Icon: MessageSquare },
-  { label: "Sellometer", path: "/sellometer", Icon: Calendar },
-  { label: "Market Report", path: "/market", Icon: BarChart3 },
-  { label: "Referrals", path: "/referral", Icon: Gift },
+  { label: "Sell-O-Meter", path: "/sellometer", Icon: Calendar },
+  { label: "Business Tools", path: "/business-tools", Icon: Briefcase },
 ]
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const [showMore, setShowMore] = useState(false)
-  const [watchCount, setWatchCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isMoreActive = MORE_ITEMS.some(m => pathname === m.path)
-
-  useEffect(() => { setWatchCount(getWatchlistCount()) }, [pathname])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -49,12 +40,9 @@ export default function BottomNav() {
     <>
       {showMore && (
         <div ref={menuRef} className="more-menu">
-          {MORE_ITEMS.map(({ label, path, Icon, badge }) => (
+          {MORE_ITEMS.map(({ label, path, Icon }) => (
             <button key={path} onClick={() => { router.push(path); setShowMore(false) }} className="more-menu-item">
-              <span style={{ position: "relative", display: "flex" }}>
-                <Icon size={16} />
-                {badge && watchCount > 0 && <span className="nav-badge" style={{ top: "-4px", right: "-6px", position: "absolute" }}>{watchCount}</span>}
-              </span>
+              <Icon size={16} />
               {label}
             </button>
           ))}
@@ -72,7 +60,6 @@ export default function BottomNav() {
         })}
         <button onClick={() => setShowMore(!showMore)} className={`bottom-nav-item ${isMoreActive || showMore ? "active" : ""}`} style={{ position: "relative" }}>
           <MoreHorizontal size={22} strokeWidth={isMoreActive ? 2.5 : 2} />
-          {watchCount > 0 && <span className="nav-badge">{watchCount > 9 ? "9+" : watchCount}</span>}
           <span>More</span>
         </button>
       </nav>

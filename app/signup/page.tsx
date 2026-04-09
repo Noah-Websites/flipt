@@ -140,7 +140,7 @@ export default function Signup() {
             {view === "email-signin" ? "Welcome Back" : "Join Flipt"}
           </h2>
           <p style={{ fontSize: "16px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-            {view === "email-signin" ? "Sign in to your account." : "Start turning your clutter into cash today."}
+            {view === "email-signin" ? "Sign in to your account" : "Start turning your clutter into cash today"}
           </p>
         </div>
 

@@ -673,11 +673,17 @@ export default function Scan() {
 
         {/* Error state */}
         {error && !showManualEntry && (
-          <motion.div className="scan-error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <p>{error}</p>
-            <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-              <button onClick={() => { setError(null); handleIdentify() }} className="btn-sm primary">Try Again</button>
-              <button onClick={() => setShowManualEntry(true)} className="btn-sm ghost" style={{ color: "rgba(255,255,255,0.6)" }}>Enter Manually</button>
+          <motion.div className="scan-error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}>
+            <p style={{ marginBottom: "8px" }}>{error}</p>
+            {fallbackTips.length > 0 && (
+              <div style={{ marginBottom: "12px", textAlign: "left" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "6px" }}>Try these tips:</p>
+                {fallbackTips.map((tip, i) => <p key={i} style={{ fontSize: "12px", color: "var(--text-faint)", lineHeight: 1.5, padding: "1px 0" }}>• {tip}</p>)}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => { setError(null); setFallbackTips([]); handleIdentify() }} className="btn-sm primary">Try Again</button>
+              <button onClick={() => setShowManualEntry(true)} className="btn-sm ghost" style={{ color: "var(--text-secondary)" }}>Describe It Instead</button>
             </div>
           </motion.div>
         )}

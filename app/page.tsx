@@ -35,7 +35,7 @@ const ACTIVITY_FEED = [
 ]
 
 const PRO_FEATURES = ["Unlimited scans", "5 platform comparison", "Damage detection", "Authenticity checks", "Brand identification", "Full scan history"]
-const BIZ_FEATURES = ["Everything in Pro", "Offer Manager", "Room Scan", "Sellometer", "Business P&L", "Market intelligence"]
+const BIZ_FEATURES = ["Everything in Pro", "Offer Manager", "Room Scan", "Sell-O-Meter", "Business P&L", "Market intelligence"]
 
 export default function Home() {
   const router = useRouter()
@@ -390,7 +390,7 @@ export default function Home() {
 
       {/* ===== SECTION 5: PRICING ===== */}
       <section ref={pricingRef} style={{ minHeight: "100vh", background: "var(--bg-secondary)", padding: "80px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <h2 style={{ fontSize: "clamp(36px, 6vw, 64px)", fontFamily: "var(--font-heading)", textAlign: "center", marginBottom: "12px" }}>Start for free.</h2>
+        <h2 style={{ fontSize: "clamp(36px, 6vw, 64px)", fontFamily: "var(--font-heading)", textAlign: "center", marginBottom: "12px" }}>Start for free</h2>
         <p style={{ fontSize: "16px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "48px" }}>No credit card needed. First 5 scans on us.</p>
 
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "center", maxWidth: "640px", width: "100%" }}>

@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import { Archive, Check, Pencil, Trash2, ShoppingCart, Download, ArrowUpDown, Filter, X, TrendingUp, DollarSign, BarChart3, Package } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Archive, Check, Pencil, Trash2, ShoppingCart, Download, ArrowUpDown, Filter, X, TrendingUp, DollarSign, BarChart3, Package, Bookmark, Bell, BellOff, TrendingDown } from "lucide-react"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem, CountUp } from "../components/Motion"
 import { useAuth } from "../components/AuthProvider"
 import { LockedPage } from "../components/UpgradeModal"
 import { useSubscription } from "../lib/useSubscription"
 import { useCurrency } from "../components/CurrencyProvider"
-import { getCloset, updateClosetItem, removeFromCloset, type ClosetItem, type ClosetStatus } from "../lib/storage"
+import { getCloset, updateClosetItem, removeFromCloset, getWatchlist, removeFromWatchlist, toggleWatchlistNotify, type ClosetItem, type ClosetStatus, type WatchlistItem } from "../lib/storage"
 
 const STATUSES: ClosetStatus[] = ["Storing", "Listed", "Sold", "Donated"]
 const SORT_OPTIONS = [
@@ -18,12 +18,18 @@ const SORT_OPTIONS = [
 ] as const
 type SortKey = typeof SORT_OPTIONS[number]["key"]
 
+type ClosetTab = "closet" | "watchlist"
+
 export default function Closet() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { canAccess } = useSubscription(user?.id)
   const { formatPrice } = useCurrency()
+  const initialTab = searchParams.get("tab") === "watchlist" ? "watchlist" : "closet"
+  const [activeTab, setActiveTab] = useState<ClosetTab>(initialTab)
   const [items, setItems] = useState<ClosetItem[]>([])
+  const [watchItems, setWatchItems] = useState<WatchlistItem[]>([])
   const [mounted, setMounted] = useState(false)
   const [editingSold, setEditingSold] = useState<string | null>(null)
   const [soldPriceInput, setSoldPriceInput] = useState("")
@@ -33,7 +39,7 @@ export default function Closet() {
   const [sort, setSort] = useState<SortKey>("date")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  useEffect(() => { setItems(getCloset()); setMounted(true) }, [])
+  useEffect(() => { setItems(getCloset()); setWatchItems(getWatchlist()); setMounted(true) }, [])
 
   function refresh() { setItems(getCloset()) }
 
@@ -97,7 +103,64 @@ export default function Closet() {
   return (
     <PageTransition>
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "32px 16px 120px", gap: "16px" }}>
-        <h2>My Closet</h2>
+        <h2>{activeTab === "closet" ? "My Closet" : "Watchlist"}</h2>
+
+        {/* Tab bar */}
+        <div className="profile-tabs" style={{ width: "100%", maxWidth: "520px" }}>
+          <button className={`profile-tab ${activeTab === "closet" ? "active" : ""}`} onClick={() => { setActiveTab("closet"); router.replace("/closet", { scroll: false }) }}>My Closet</button>
+          <button className={`profile-tab ${activeTab === "watchlist" ? "active" : ""}`} onClick={() => { setActiveTab("watchlist"); router.replace("/closet?tab=watchlist", { scroll: false }) }}>Watchlist</button>
+        </div>
+
+        {/* ===== WATCHLIST TAB ===== */}
+        {activeTab === "watchlist" && (
+          !canAccess("watchlist") ? (
+            <LockedPage title="Watchlist is a Pro feature" description="Save items and track price changes across all platforms" plan="pro" onUpgrade={() => router.push("/settings")} />
+          ) : watchItems.length === 0 ? (
+            <div className="empty-state">
+              <Bookmark size={32} style={{ color: "var(--text-faint)" }} />
+              <p style={{ fontSize: "15px", fontWeight: 600 }}>Your watchlist is empty</p>
+              <p style={{ fontSize: "13px", color: "var(--text-faint)", maxWidth: "280px" }}>Bookmark items from the marketplace or feed to track their prices here</p>
+              <button onClick={() => router.push("/marketplace")} className="btn-sm primary" style={{ marginTop: "8px" }}>Browse Marketplace</button>
+            </div>
+          ) : (
+            <div style={{ width: "100%", maxWidth: "520px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {watchItems.map(item => {
+                const priceDrop = item.price < item.savedPrice
+                const dropAmount = item.savedPrice - item.price
+                return (
+                  <div key={item.id} className="card" style={{ padding: "14px" }}>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                      <div style={{ width: "56px", height: "56px", borderRadius: "10px", overflow: "hidden", background: "var(--bg)", border: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {item.imageUrl ? <img src={item.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Package size={20} style={{ color: "var(--text-faint)" }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "14px", fontWeight: 700, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                          <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--gold)" }}>${item.price}</span>
+                          {priceDrop && <span className="price-drop-badge"><TrendingDown size={10} /> -${dropAmount}</span>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                          <span className="platform-badge">{item.platform}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "10px" }}>
+                      <button onClick={() => { toggleWatchlistNotify(item.id); setWatchItems(getWatchlist()) }} className="btn-sm ghost" style={{ padding: "4px 10px", gap: "4px", fontSize: "11px" }}>
+                        {item.notify ? <><BellOff size={12} /> Mute</> : <><Bell size={12} /> Notify</>}
+                      </button>
+                      <button onClick={() => { removeFromWatchlist(item.id); setWatchItems(getWatchlist()) }} className="btn-sm danger" style={{ padding: "4px 10px", gap: "4px", fontSize: "11px" }}>
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        )}
+
+        {/* ===== CLOSET TAB ===== */}
+        {activeTab === "closet" && <>
 
         {/* Earnings dashboard */}
         {items.length > 0 && (
@@ -211,6 +274,8 @@ export default function Closet() {
             ))}
           </div>
         )}
+
+        </>}
 
         {/* Delete confirmation */}
         {deleteConfirm && (

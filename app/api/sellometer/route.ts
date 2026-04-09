@@ -62,7 +62,7 @@ Return ONLY valid JSON:
     if (result) return Response.json(result)
     return Response.json({ error: "Failed to parse response" }, { status: 500 })
   } catch (err) {
-    console.error("[Sellometer]", err instanceof Error ? err.message : "unknown")
+    console.error("[Sell-O-Meter]", err instanceof Error ? err.message : "unknown")
     return Response.json({ error: "Analysis failed. Please try again." }, { status: 500 })
   }
 }

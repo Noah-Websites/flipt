@@ -62,8 +62,8 @@ export default function Sellometer() {
   if (!canAccess("full_price_comparison")) {
     return (
       <PageTransition><main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
-        <div style={{ padding: "32px 20px 16px" }}><h2>Seasonal Sellometer</h2></div>
-        <LockedPage title="Sellometer is a Pro feature" description="Know exactly when to sell any item for maximum profit with seasonal pricing intelligence" plan="pro" onUpgrade={() => router.push("/settings")} />
+        <div style={{ padding: "32px 20px 16px" }}><h2>Seasonal Sell-O-Meter</h2></div>
+        <LockedPage title="Sell-O-Meter is a Pro feature" description="Know exactly when to sell any item for maximum profit with seasonal pricing intelligence" plan="pro" onUpgrade={() => router.push("/settings")} />
       </main></PageTransition>
     )
   }
@@ -80,7 +80,7 @@ export default function Sellometer() {
     <PageTransition>
       <main style={{ minHeight: "100vh", padding: "0 0 120px" }}>
         <div style={{ padding: "32px 20px 8px" }}>
-          <h2 style={{ marginBottom: "4px" }}>Seasonal Sellometer</h2>
+          <h2 style={{ marginBottom: "4px" }}>Seasonal Sell-O-Meter</h2>
           <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Know exactly when to sell for maximum profit</p>
         </div>
 

@@ -327,7 +327,7 @@ export default function Market() {
           <FadeUp>
             <div className="newsletter-box">
               <p style={{ fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>Get This Report Weekly</p>
-              <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Free market insights every Monday.</p>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Free market insights every Monday</p>
               {!subscribed ? (
                 <div className="newsletter-input-row">
                   <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubscribe()} className="input" style={{ fontSize: "13px" }} />

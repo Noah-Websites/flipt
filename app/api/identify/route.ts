@@ -184,13 +184,13 @@ Condition: ${conditionText}.${nameHint} JSON only.`
   // ===== ALL FAILED =====
   console.error("[Scan] All attempts failed.")
   return Response.json({
-    error: "We had trouble with this image. Try a clearer photo or enter the item name manually.",
+    error: "We couldn't quite make this one out.",
     fallback: true,
     tips: [
-      "Make sure the item is well lit",
-      "Photograph the item straight on",
-      "Make sure the item fills the frame",
-      "Include any brand labels or tags",
+      "Make sure the item fills most of the frame",
+      "Try better lighting",
+      "Include any visible brand labels",
+      "Try a straight-on angle",
     ],
   })
 }

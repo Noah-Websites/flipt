@@ -1,4 +1,4 @@
-// ===== CONDENSED SCANNING PROMPT (< 2000 chars) =====
+// ===== CONDENSED SCANNING PROMPT =====
 // Optimized for speed with Sonnet while maintaining accuracy
 
 export const CATEGORY_DETECT_PROMPT = `Identify category: sports_card, trading_card, pokemon_card, electronics, sneakers, clothing, furniture, vintage, collectible, book, instrument, sporting_equipment, jewelry, toy, plush, lego, board_game, kitchen, tools, art, appliance, other. Return ONE word only.`
@@ -10,6 +10,17 @@ RULES:
 - Identify by shape, color, logos, text, context clues
 - Common items (mugs, bottles, mice, keyboards, frames) must ALWAYS be identified
 - Factor condition heavily (excellent = +30-50%)
+
+NO RESALE VALUE ITEMS:
+If the item is any of these, set "hasResaleValue": false and set all prices to 0:
+- Opened personal care (deodorant, shampoo, soap, toothbrush, razor, lotion)
+- Food and beverages (opened or unopened)
+- Opened cleaning products (spray bottles, detergent)
+- Used makeup and cosmetics
+- Opened medication or supplements
+- Toilet paper and paper products
+- Basic office supplies (pens, pencils, tape, stapler refills)
+Still identify the item correctly — just indicate it has no resale value and explain why in "noResaleReason".
 
 PRICING KNOWLEDGE:
 Electronics: Apple holds value. PS5 $350-400, Switch $200-250, MacBooks $300-800.
@@ -33,6 +44,8 @@ JSON only, no markdown:
   "category": "category",
   "identificationConfidence": 0-100,
   "confidenceReason": "why",
+  "hasResaleValue": true or false,
+  "noResaleReason": "reason if no resale value, or null",
   "conditionAssessment": "observed condition",
   "quickSalePrice": number,
   "fairMarketPrice": number,

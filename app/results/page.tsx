@@ -37,6 +37,7 @@ interface ItemResult {
   bestPlatform?: string; platformReason?: string
   ebayTitle?: string; ebayDescription?: string
   tips?: string[]; interestingFact?: string
+  hasResaleValue?: boolean; noResaleReason?: string | null
   photoIssue?: string | null; detectedCategory?: string; category?: string
   priceHistory?: PricePoint[]; comparables?: Comparable[]; bestTimeToSell?: BestTime
   platformComparison?: PlatformComp[]
@@ -205,8 +206,32 @@ export default function Results() {
 
         <div style={{ width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", gap: "12px", padding: "16px 16px 0" }}>
 
-          {/* Price tier tabs */}
-          <FadeUp>
+          {/* No Resale Value card */}
+          {result.hasResaleValue === false && (
+            <FadeUp>
+              <div className="card" style={{ borderColor: "var(--gold)", textAlign: "center", padding: "28px 24px" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--gold-subtle)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                  <span style={{ fontSize: "24px" }}>&#128075;</span>
+                </div>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>No Resale Value</p>
+                <p style={{ fontSize: "15px", fontWeight: 600, marginBottom: "8px" }}>This appears to be {result.item.toLowerCase().startsWith("a ") || result.item.toLowerCase().startsWith("an ") ? result.item.toLowerCase() : `a ${result.item.toLowerCase()}`}</p>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: "20px" }}>
+                  {result.noResaleReason || "This item typically has no resale value once opened. Consider donating it or checking if it\u2019s unopened \u2014 unopened personal care products can sometimes sell for $1\u20133."}
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <button onClick={() => router.push("/gems")} className="btn-primary" style={{ width: "100%" }}>
+                    Find Items to Sell
+                  </button>
+                  <button onClick={() => router.push("/scan")} className="btn-secondary" style={{ width: "100%" }}>
+                    <Scan size={16} /> Scan Another Item
+                  </button>
+                </div>
+              </div>
+            </FadeUp>
+          )}
+
+          {/* Price tier tabs — only show when item has resale value */}
+          {result.hasResaleValue !== false && <FadeUp>
             <div className="card value-card" style={{ padding: "20px" }}>
               <div className="price-tabs" style={{ marginBottom: "16px" }}>
                 <button className={`price-tab ${priceTier === "quick" ? "active" : ""}`} onClick={() => setPriceTier("quick")}>Quick Sale</button>
@@ -222,7 +247,7 @@ export default function Results() {
               {result.seasonalNote && <p style={{ fontSize: "11px", color: "var(--text-secondary)", textAlign: "center", marginTop: "8px" }}>{result.seasonalNote}</p>}
               {result.conditionNote && <p style={{ fontSize: "11px", color: "var(--text-secondary)", textAlign: "center", marginTop: "4px" }}>{result.conditionNote}</p>}
             </div>
-          </FadeUp>
+          </FadeUp>}
 
           {/* Correction banner */}
           {result.identificationConfidence != null && confidence < 80 && showCorrectionBanner && !correcting && (
@@ -498,7 +523,7 @@ export default function Results() {
               <button onClick={handleShare} className="btn-sm ghost"><Share2 size={14} /></button>
             </div>
 
-            {/* Sellometer shortcut */}
+            {/* Sell-O-Meter shortcut */}
             <button onClick={() => router.push(`/sellometer?item=${encodeURIComponent(result.item)}`)} className="btn-sm ghost" style={{ width: "100%", justifyContent: "center" }}>
               <Clock size={14} /> Check best time to sell this
             </button>

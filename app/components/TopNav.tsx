@@ -9,7 +9,7 @@ const LINKS = [
   { label: "Scan", path: "/scan" },
   { label: "Feed", path: "/feed" },
   { label: "Marketplace", path: "/marketplace" },
-  { label: "History", path: "/history" },
+  { label: "Profile", path: "/profile" },
   { label: "Settings", path: "/settings" },
 ]
 
