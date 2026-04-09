@@ -68,7 +68,7 @@ export default function Home() {
 
       revealTl
         .fromTo(".reveal-line", { scaleX: 0 }, { scaleX: 1, duration: 0.6, delay: 0.3 })
-        .fromTo(".reveal-title", { y: -120, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.2)" }, "+=0.1")
+        .fromTo(".reveal-title", { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.out" }, "+=0.1")
         .to(".reveal-line", { opacity: 0.3, duration: 0.15, yoyo: true, repeat: 1 }, "-=0.1")
         .fromTo(".reveal-word", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.08 }, "+=0.2")
         .fromTo(".reveal-subtitle", { opacity: 0 }, { opacity: 1, duration: 0.5 }, "+=0.3")
