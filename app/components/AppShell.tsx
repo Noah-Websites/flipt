@@ -112,11 +112,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (phase === "splash" || phase === "splash-exit") {
     return (
       <div className={`splash-screen ${phase === "splash-exit" ? "exiting" : ""}`}>
-        <h1 style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "72px", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "clamp(56px, 12vw, 80px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", opacity: 0, animation: "fadeIn 1.2s ease-out 0.3s forwards", position: "relative", zIndex: 1 }}>
           Flipt
         </h1>
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", fontWeight: 400, color: "rgba(255,255,255,0.7)" }}>
-          Turn your clutter into cash
+        <div style={{ width: "60px", height: "1px", background: "var(--gold)", opacity: 0, animation: "fadeIn 0.8s ease-out 1.5s forwards", position: "relative", zIndex: 1 }} />
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", fontWeight: 400, color: "var(--text-secondary)", opacity: 0, animation: "fadeIn 0.6s ease-out 2s forwards", position: "relative", zIndex: 1 }}>
+          Turn your clutter into cash.
         </p>
       </div>
     )

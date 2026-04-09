@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Rss, Heart, Bookmark, Share2, Flag, MessageCircle } from "lucide-react"
+import { ScrollFadeIn } from "../components/Cinematic"
 import { PageTransition, StaggerContainer, StaggerItem } from "../components/Motion"
 import { useCurrency } from "../components/CurrencyProvider"
 import { useAuth } from "../components/AuthProvider"
@@ -161,7 +162,8 @@ export default function Feed() {
               const isLiked = likedPosts.has(post.id)
               const isSaved = savedPosts.has(post.id)
               return (
-                <div key={post.id} className="feed-post">
+                <ScrollFadeIn key={post.id} delay={idx * 0.05}>
+                <div className="feed-post">
                   <div className="feed-header">
                     <div className="feed-avatar" onClick={() => post.profiles?.referral_code && router.push(`/seller/${post.profiles.referral_code}`)} style={{ cursor: "pointer" }}>
                       {getInitials(sellerName)}
@@ -204,6 +206,7 @@ export default function Feed() {
                     </button>
                   </div>
                 </div>
+                </ScrollFadeIn>
               )
             })}
             {hasMore && <div ref={loaderRef} style={{ height: "60px", display: "flex", alignItems: "center", justifyContent: "center" }}><span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }} /></div>}

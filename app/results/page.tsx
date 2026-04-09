@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import PriceChart from "../components/PriceChart"
 import CollapsibleSection from "../components/CollapsibleSection"
 import { PageTransition, FadeUp, StaggerContainer, StaggerItem, ScaleIn, CountUp } from "../components/Motion"
+import { PriceFlip, TypeWriter, ScrollFadeIn } from "../components/Cinematic"
 import { useAuth } from "../components/AuthProvider"
 import UpgradeModal, { LockedOverlay } from "../components/UpgradeModal"
 import { useSubscription } from "../lib/useSubscription"
@@ -196,7 +197,7 @@ export default function Results() {
               {result.brand && result.brand.name !== "Unknown Brand" && result.brand.name !== "Unknown" && (
                 <p style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>{result.brand.name}</p>
               )}
-              <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#fff", lineHeight: 1.2, fontFamily: "var(--font-heading)" }}>{result.item}</h2>
+              <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#fff", lineHeight: 1.2, fontFamily: "var(--font-heading)" }}><TypeWriter text={result.item} speed={40} /></h2>
               {result.vintage?.isVintage && <span className="vintage-badge" style={{ marginTop: "6px" }}><Clock size={10} /> Vintage</span>}
             </div>
           </div>
@@ -213,8 +214,8 @@ export default function Results() {
                 <button className={`price-tab ${priceTier === "patient" ? "active" : ""}`} onClick={() => setPriceTier("patient")}>Patient Seller</button>
               </div>
               <AnimatePresence mode="wait">
-                <motion.p key={priceTier} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} style={{ fontSize: "42px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--green-accent)", textAlign: "center" }}>
-                  ${tierPrice}
+                <motion.p key={priceTier} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: "42px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--gold)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                  <PriceFlip value={tierPrice} duration={1.2} />
                 </motion.p>
               </AnimatePresence>
               {hasDamage && <p style={{ fontSize: "12px", color: "var(--text-secondary)", textAlign: "center", marginTop: "4px" }}>Adjusted for condition</p>}

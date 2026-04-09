@@ -88,21 +88,22 @@ export default function Home() {
         })
 
         scanTl
-          // Feature 1: Scan Anything
-          .fromTo(".feat-1", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 })
-          .to(".phone-screen-1", { opacity: 1, duration: 0.2 }, "<")
+          // Feature 1: Scan Anything — fade out default, show scan
+          .to(".phone-screen-default", { opacity: 0, duration: 0.15 })
+          .fromTo(".feat-1", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 }, "<")
+          .to(".phone-screen-1", { opacity: 1, duration: 0.2 }, "<0.1")
           .to({}, { duration: 0.3 }) // hold
           .to(".feat-1", { x: -100, opacity: 0, duration: 0.2 })
-          .to(".phone-screen-1", { opacity: 0, duration: 0.1 }, "<")
+          .to(".phone-screen-1", { opacity: 0, duration: 0.15 }, "<")
           // Feature 2: Real Market Prices
           .fromTo(".feat-2", { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 })
-          .to(".phone-screen-2", { opacity: 1, duration: 0.2 }, "<")
+          .to(".phone-screen-2", { opacity: 1, duration: 0.2 }, "<0.1")
           .to({}, { duration: 0.3 })
           .to(".feat-2", { x: 100, opacity: 0, duration: 0.2 })
-          .to(".phone-screen-2", { opacity: 0, duration: 0.1 }, "<")
+          .to(".phone-screen-2", { opacity: 0, duration: 0.15 }, "<")
           // Feature 3: List in Seconds
           .fromTo(".feat-3", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 })
-          .to(".phone-screen-3", { opacity: 1, duration: 0.2 }, "<")
+          .to(".phone-screen-3", { opacity: 1, duration: 0.2 }, "<0.1")
           .to({}, { duration: 0.4 })
       }
 
@@ -214,7 +215,7 @@ export default function Home() {
           {/* Screen content */}
           <div style={{ position: "absolute", top: "36px", left: "8px", right: "8px", bottom: "8px", borderRadius: "24px", background: "#060d0a", overflow: "hidden" }}>
             {/* Default: scan interface */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            <div className="phone-screen-default" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px", transition: "opacity 0.3s ease" }}>
               <Camera size={28} style={{ color: "var(--text-faint)" }} />
               <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>Scan anything</span>
               {/* Corner brackets */}
@@ -288,8 +289,14 @@ export default function Home() {
 
           {/* Polaroid photo card */}
           <div className="story-photo" style={{ background: "#fff", padding: "12px 12px 40px", borderRadius: "4px", boxShadow: "0 8px 40px rgba(0,0,0,0.4)", width: "200px", willChange: "transform, opacity" }}>
-            <div style={{ width: "100%", aspectRatio: "1", background: "#1a1a1a", borderRadius: "2px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>
-              ⛸️
+            <div style={{ width: "100%", aspectRatio: "1", background: "#1a1a1a", borderRadius: "2px", overflow: "hidden", position: "relative" }}>
+              <img
+                src="https://images.unsplash.com/photo-1580891066394-13884adce58a?w=400&h=400&fit=crop"
+                alt="Hockey skates"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                loading="lazy"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.style.display = "flex"; (e.target as HTMLImageElement).parentElement!.style.alignItems = "center"; (e.target as HTMLImageElement).parentElement!.style.justifyContent = "center"; (e.target as HTMLImageElement).parentElement!.style.fontSize = "48px"; (e.target as HTMLImageElement).parentElement!.innerText = "\u26F8\uFE0F" }}
+              />
             </div>
             <p style={{ color: "#333", fontSize: "12px", fontWeight: 500, textAlign: "center", marginTop: "12px" }}>Found in the basement</p>
           </div>
@@ -316,7 +323,22 @@ export default function Home() {
 
           {/* Total earned */}
           <div className="story-total" style={{ textAlign: "center", opacity: 0, willChange: "transform, opacity" }}>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "4px" }}>Sold for $95 in 3 days</p>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "12px" }}>Sold for $95 in 3 days</p>
+            {/* Quick beat items */}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginBottom: "16px" }}>
+              {[
+                { img: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=200&h=200&fit=crop", label: "Laptop", price: "$340", emoji: "\uD83D\uDCBB" },
+                { img: "https://images.unsplash.com/photo-1507473885765-e6ed057ab6fe?w=200&h=200&fit=crop", label: "Lamp", price: "$65", emoji: "\uD83D\uDCA1" },
+                { img: "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=200&h=200&fit=crop", label: "Cards", price: "$180", emoji: "\uD83C\uDCCF" },
+              ].map((item, i) => (
+                <div key={i} style={{ width: "64px", textAlign: "center" }}>
+                  <div style={{ width: "56px", height: "56px", borderRadius: "8px", overflow: "hidden", background: "#1a1a1a", margin: "0 auto 4px", border: "2px solid #fff" }}>
+                    <img src={item.img} alt={item.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.innerText = item.emoji }} />
+                  </div>
+                  <p style={{ fontSize: "10px", color: "var(--gold)", fontWeight: 700 }}>{item.price}</p>
+                </div>
+              ))}
+            </div>
             <p style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--gold)" }}>Total earned: $680</p>
           </div>
 

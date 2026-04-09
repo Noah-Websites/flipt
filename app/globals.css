@@ -72,9 +72,7 @@
 html { scroll-behavior: auto; }
 a { text-decoration: none; color: inherit; }
 
-button { transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
-button:active { transform: scale(0.97); }
-input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px var(--gold); transition: box-shadow 0.15s ease; }
+/* Button and input transitions moved to Global Micro Interactions section below */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
@@ -106,6 +104,7 @@ h2 { font-size: 32px; }
 h3 { font-size: 22px; }
 
 /* ===== Animations ===== */
+/* ===== Core Keyframes ===== */
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
@@ -119,8 +118,129 @@ h3 { font-size: 22px; }
 @keyframes goldShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes aurora { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-.skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease infinite; border-radius: 12px; }
+/* Cinematic keyframes */
+@keyframes bracketDraw { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
+@keyframes targetPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.3); opacity: 0; } }
+@keyframes priceFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes breatheGreen { 0%,100% { box-shadow: 0 0 16px rgba(82,176,112,0.1); } 50% { box-shadow: 0 0 28px rgba(82,176,112,0.2); } }
+@keyframes breatheGold { 0%,100% { box-shadow: 0 0 16px var(--gold-glow); } 50% { box-shadow: 0 0 28px rgba(201,148,58,0.25); } }
+@keyframes stampIn { 0% { transform: scale(2) rotate(-5deg); opacity: 0; } 60% { transform: scale(0.95) rotate(0deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+@keyframes electricArc { 0% { left: -10%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { left: 110%; opacity: 0; } }
+@keyframes ripple { 0% { transform: scale(0.5); opacity: 0.4; } 100% { transform: scale(2); opacity: 0; } }
+@keyframes typeCursor { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes spotlightSweep { 0% { background-position: -100% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes vaultBolt { 0% { transform: rotate(0deg); } 100% { transform: rotate(90deg); } }
+
+/* Gold-tinted shimmer for skeletons */
+.skeleton { background: linear-gradient(90deg, var(--surface) 25%, rgba(201,148,58,0.06) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease infinite; border-radius: 12px; }
 .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; margin-right: 8px; }
+
+/* ===== Global Micro Interactions ===== */
+
+/* Button press — universal physical feel */
+button { transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; will-change: transform; }
+button:active { transform: scale(0.96) !important; }
+
+/* Clickable card/row hover nudge */
+.settings-row.clickable:hover, .history-card:hover, .more-menu-item:hover,
+.photo-card:hover, .trending-item:hover, .closet-card:hover { transform: translateX(4px); }
+
+/* Input gold focus glow */
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--gold) !important; box-shadow: 0 0 0 3px rgba(201,148,58,0.15) !important; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+
+/* Toast spring entrance */
+.toast { animation: fadeIn 0.2s ease, fadeOut 0.2s ease 2.5s forwards; transform-origin: top center; }
+
+/* Modal spring slide-up */
+.modal-content { animation: slideUpSpring 0.3s ease-out; }
+@keyframes slideUpSpring { 0% { transform: translateY(100%); } 80% { transform: translateY(-2%); } 100% { transform: translateY(0); } }
+
+/* ===== Scan Page Animations ===== */
+
+/* Corner bracket draw animation */
+.scan-corner { animation: fadeIn 0.6s ease-out both; }
+.scan-corner-tl { animation-delay: 0.1s; }
+.scan-corner-tr { animation-delay: 0.15s; }
+.scan-corner-bl { animation-delay: 0.2s; }
+.scan-corner-br { animation-delay: 0.25s; }
+
+/* Target lock pulse after brackets */
+.scan-viewfinder::after {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
+  border-radius: 50%; border: 1px solid var(--gold); transform: translate(-50%, -50%) scale(1);
+  animation: targetPulse 0.3s ease-out 0.7s both; pointer-events: none;
+}
+
+/* Identify button continuous pulse */
+.scan-identify-btn:not(:disabled) { animation: goldPulse 3s ease infinite; }
+
+/* Photo upload snap */
+.scan-viewfinder-img { animation: fadeIn 0.3s ease-out; transform-origin: center; }
+
+/* ===== Results Page Animations ===== */
+
+/* Price float on marketplace cards */
+.photo-card-body .gradient-text, .photo-card-body [style*="green-accent"], .photo-card-body [style*="gold"] {
+  will-change: transform;
+}
+
+/* Platform card entrance (handled by framer-motion but CSS fallback) */
+.pc-row, .comparable-card { will-change: transform, opacity; }
+
+/* Confidence badge bounce */
+.difficulty-pill, .risk-pill, .severity-pill { will-change: transform; }
+
+/* ===== Marketplace Spotlight ===== */
+.photo-card { position: relative; overflow: hidden; transition: transform 0.15s ease, border-color 0.15s ease; }
+.photo-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(circle 120px at var(--mx, 50%) var(--my, 50%), rgba(201,148,58,0.06) 0%, transparent 100%);
+  opacity: 0; transition: opacity 0.2s ease;
+}
+.photo-card:hover::before { opacity: 1; }
+.photo-card:hover { border-color: rgba(201,148,58,0.15); }
+
+/* ===== Feed Animations ===== */
+
+/* Like button particle burst container */
+.like-btn { position: relative; overflow: visible; }
+.like-btn.liked svg { animation: stampIn 0.3s ease-out; }
+
+/* Feed post entrance */
+.feed-post { will-change: transform, opacity; }
+
+/* ===== Closet Vault ===== */
+
+/* Item card dealing effect */
+.closet-card { will-change: transform, opacity; }
+
+/* Status badge flip */
+.status-select { transition: all 0.2s ease; }
+
+/* ===== Settings Control Panel ===== */
+
+/* Toggle electric arc */
+.settings-row { position: relative; overflow: hidden; }
+.settings-row::after {
+  content: ""; position: absolute; top: 50%; height: 1px; width: 40px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  pointer-events: none; opacity: 0; transform: translateY(-50%);
+}
+
+/* Subscription card breathing */
+.upgrade-card.pro-card { animation: breatheGreen 3s ease infinite; }
+.upgrade-card.biz-card { animation: breatheGold 3s ease infinite 1.5s; }
+
+/* ===== Offer Manager Animations ===== */
+
+/* Counter offer stamp */
+.stamp-animate { animation: stampIn 0.4s ease-out; }
+
+/* ===== Profile Trophy Case ===== */
+
+/* Avatar ring draw */
+.profile-avatar { box-shadow: 0 0 0 3px var(--gold); animation: fadeIn 0.6s ease-out; }
+.profile-stat-val { will-change: transform; }
 
 /* ===== Bottom Navigation — floating pill ===== */
 .bottom-nav {
@@ -452,7 +572,16 @@ textarea.input { border-radius: 16px; }
 .invoice-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
 
 /* ===== Onboarding ===== */
-.splash-screen { position: fixed; inset: 0; z-index: 1000; background: var(--green); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; animation: fadeIn 0.3s ease; }
+.splash-screen {
+  position: fixed; inset: 0; z-index: 1000; background: #060d0a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+.splash-screen::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 30% 40%, rgba(45,107,69,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 60%, rgba(201,148,58,0.04) 0%, transparent 60%);
+  background-size: 200% 200%; animation: aurora 30s ease infinite; opacity: 0.15;
+}
 .splash-screen.exiting { animation: fadeOut 0.5s ease-in-out forwards; }
 .onboarding-overlay { position: fixed; inset: 0; z-index: 900; background: var(--bg); display: flex; flex-direction: column; animation: fadeIn 0.3s ease; }
 .onboarding-overlay.exiting { animation: fadeOut 0.3s ease-in-out forwards; }
