@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { label: "Feed", path: "/feed", Icon: Rss },
 ]
 
-const MORE_ITEMS: { label: string; path: string; Icon: typeof Home; badge?: boolean; planBadge?: "pro" | "business" }[] = [
+const MORE_ITEMS: { label: string; path: string; Icon: typeof Home; badge?: boolean }[] = [
   { label: "Search", path: "/search", Icon: Search },
   { label: "Settings", path: "/settings", Icon: Settings },
   { label: "Profile", path: "/profile", Icon: User },
@@ -20,8 +20,8 @@ const MORE_ITEMS: { label: string; path: string; Icon: typeof Home; badge?: bool
   { label: "History", path: "/history", Icon: Clock },
   { label: "My Closet", path: "/closet", Icon: Archive },
   { label: "Watchlist", path: "/watchlist", Icon: Bookmark, badge: true },
-  { label: "Offer Manager", path: "/offer-manager", Icon: MessageSquare, planBadge: "business" },
-  { label: "Sellometer", path: "/sellometer", Icon: Calendar, planBadge: "pro" },
+  { label: "Offer Manager", path: "/offer-manager", Icon: MessageSquare },
+  { label: "Sellometer", path: "/sellometer", Icon: Calendar },
   { label: "Market Report", path: "/market", Icon: BarChart3 },
   { label: "Referrals", path: "/referral", Icon: Gift },
 ]
@@ -49,19 +49,13 @@ export default function BottomNav() {
     <>
       {showMore && (
         <div ref={menuRef} className="more-menu">
-          {MORE_ITEMS.map(({ label, path, Icon, badge, planBadge }) => (
+          {MORE_ITEMS.map(({ label, path, Icon, badge }) => (
             <button key={path} onClick={() => { router.push(path); setShowMore(false) }} className="more-menu-item">
               <span style={{ position: "relative", display: "flex" }}>
                 <Icon size={16} />
                 {badge && watchCount > 0 && <span className="nav-badge" style={{ top: "-4px", right: "-6px", position: "absolute" }}>{watchCount}</span>}
               </span>
               {label}
-              {planBadge === "business" && (
-                <span style={{ marginLeft: "auto", padding: "1px 6px", fontSize: "8px", fontWeight: 700, borderRadius: "50px", background: "rgba(201,168,76,0.12)", color: "#c9a84c", textTransform: "uppercase", letterSpacing: "0.04em" }}>Biz</span>
-              )}
-              {planBadge === "pro" && (
-                <span style={{ marginLeft: "auto", padding: "1px 6px", fontSize: "8px", fontWeight: 700, borderRadius: "50px", background: "var(--green-light)", color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Pro</span>
-              )}
             </button>
           ))}
         </div>

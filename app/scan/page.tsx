@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Lock, Check, Upload, Camera, X, Plus, Aperture } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "../components/AuthProvider"
+import { useSubscription } from "../lib/useSubscription"
+import { LockedPage } from "../components/UpgradeModal"
 import { addToHistory, saveBulkReport, isPro, getBonusScans, type BulkReportItem } from "../lib/storage"
 import { saveScan } from "../lib/db"
 
@@ -37,6 +39,7 @@ export default function Scan() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { canAccess } = useSubscription(user?.id)
   const isBulk = searchParams.get("bulk") === "true"
   const isRoom = searchParams.get("room") === "true"
 
@@ -381,6 +384,14 @@ export default function Scan() {
   }
 
   if (isRoom) {
+    if (!canAccess("room_scan")) {
+      return (
+        <main style={{ minHeight: "100vh", padding: "0 0 120px", background: "#0a0f0a" }}>
+          <div style={{ padding: "32px 20px 16px" }}><h2 style={{ color: "#fff" }}>Room Scan</h2></div>
+          <LockedPage title="Room Scan is a Business feature" description="Photograph any room and instantly identify every sellable item with AI-powered detection" plan="business" onUpgrade={() => router.push("/settings")} />
+        </main>
+      )
+    }
     return (
       <main style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", padding: "48px 24px 100px", gap: "24px", background: "#0a0f0a", color: "#fff" }}>
         <h2 style={{ textAlign: "center" }}>Room Scan</h2>
@@ -647,14 +658,11 @@ export default function Scan() {
 
           {/* Room Scan */}
           <button
-            onClick={() => {
-              if (!isPro()) { setShowPaywall(true); return }
-              router.push("/scan?room=true")
-            }}
+            onClick={() => router.push("/scan?room=true")}
             className="scan-secondary-btn"
             style={{ width: "100%", justifyContent: "center", padding: "12px", gap: "8px" }}
           >
-            Room Scan {!isPro() && <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 6px", borderRadius: "50px", background: "rgba(201,168,76,0.12)", color: "#c9a84c" }}>Business</span>}
+            Room Scan
           </button>
         </div>
 
