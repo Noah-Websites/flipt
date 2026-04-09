@@ -1,252 +1,433 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ChevronRight, Camera, BarChart3, FileText, Scan, ArrowRight, Check } from "lucide-react"
-import { PageTransition, FadeUp, StaggerContainer, StaggerItem, WordReveal, CountUp, ScaleIn, SlideIn } from "./components/Motion"
-import { useCurrency } from "./components/CurrencyProvider"
+import { gsap } from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
+import { Scan, Check, Camera, BarChart3, FileText, ArrowRight } from "lucide-react"
 import { addReferral } from "./lib/storage"
-import { supabase } from "./lib/supabase"
 
-const FALLBACK_SALES = [
-  "Someone in Ottawa just sold a MacBook Pro for $890",
-  "Someone in Toronto just sold Nike Air Force 1s for $120",
-  "Someone in Vancouver just sold a KitchenAid mixer for $180",
-  "Someone in Calgary just sold a Canada Goose jacket for $450",
-  "Someone in Montreal just sold a PS5 controller for $55",
-  "Someone in Winnipeg just sold vintage LEGO for $220",
-  "Someone in Halifax just sold Lululemon leggings for $65",
-  "Someone in Edmonton just sold a Dyson vacuum for $280",
+gsap.registerPlugin(ScrollTrigger)
+
+/* ===== DATA ===== */
+const TICKER_ITEMS = [
+  "MacBook Pro — $890 — Ottawa",
+  "Nike Air Force 1 — $120 — Toronto",
+  "KitchenAid Mixer — $180 — Vancouver",
+  "Canada Goose Jacket — $450 — Calgary",
+  "PS5 Controller — $55 — Montreal",
+  "Vintage LEGO — $220 — Winnipeg",
+  "Lululemon Leggings — $65 — Halifax",
+  "Dyson Vacuum — $280 — Edmonton",
 ]
+
+const ACTIVITY_FEED = [
+  { city: "Ottawa", item: "MacBook Pro", price: 890 },
+  { city: "Toronto", item: "Lululemon jacket", price: 95 },
+  { city: "Vancouver", item: "vintage watch", price: 340 },
+  { city: "Calgary", item: "hockey cards", price: 180 },
+  { city: "Montreal", item: "KitchenAid mixer", price: 175 },
+  { city: "Edmonton", item: "Canada Goose parka", price: 420 },
+  { city: "Ottawa", item: "Nintendo Switch", price: 230 },
+  { city: "Toronto", item: "Dyson V8", price: 210 },
+  { city: "Halifax", item: "mountain bike", price: 350 },
+  { city: "Winnipeg", item: "LEGO Star Wars set", price: 155 },
+]
+
+const PRO_FEATURES = ["Unlimited scans", "5 platform comparison", "Damage detection", "Authenticity checks", "Brand identification", "Full scan history"]
+const BIZ_FEATURES = ["Everything in Pro", "Offer Manager", "Room Scan", "Sellometer", "Business P&L", "Market intelligence"]
 
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { formatPrice } = useCurrency()
-  const [todayValue, setTodayValue] = useState(0)
-  const [loaded, setLoaded] = useState(false)
-  const [tickerItems, setTickerItems] = useState<string[]>(FALLBACK_SALES)
+  const mainRef = useRef<HTMLDivElement>(null)
+  const revealRef = useRef<HTMLDivElement>(null)
+  const scannerRef = useRef<HTMLDivElement>(null)
+  const storyRef = useRef<HTMLDivElement>(null)
+  const dashRef = useRef<HTMLDivElement>(null)
+  const pricingRef = useRef<HTMLDivElement>(null)
+  const [activityIdx, setActivityIdx] = useState(0)
 
+  // Referral tracking
   useEffect(() => {
     const ref = searchParams.get("ref")
     if (ref && !localStorage.getItem("flipt-ref-visited")) { localStorage.setItem("flipt-ref-visited", ref); addReferral() }
-    async function load() {
-      try {
-        const today = new Date(); today.setHours(0, 0, 0, 0)
-        const { data } = await supabase.from("scans").select("estimated_value_low, estimated_value_high").gte("created_at", today.toISOString())
-        if (data && data.length > 0) {
-          setTodayValue(data.reduce((s: number, d: { estimated_value_low: number; estimated_value_high: number }) => s + Math.round((d.estimated_value_low + d.estimated_value_high) / 2), 0))
-        }
-      } catch {}
-      setLoaded(true)
-    }
-    load()
-
-    // Fetch real ticker data
-    async function loadTicker() {
-      try {
-        const res = await fetch("/api/homepage/ticker")
-        if (res.ok) {
-          const data = await res.json()
-          if (data.items && data.items.length > 0) {
-            setTickerItems(data.items.map((t: { item: string; price: number; city: string }) =>
-              `Someone in ${t.city} just sold ${t.item} for $${t.price}`
-            ))
-          }
-        }
-      } catch {
-        // Keep fallback
-      }
-    }
-    loadTicker()
   }, [searchParams])
 
-  return (
-    <PageTransition>
-      <main style={{ minHeight: "100vh", paddingBottom: "100px" }}>
+  // Activity feed rotation
+  useEffect(() => {
+    const interval = setInterval(() => setActivityIdx(prev => (prev + 1) % ACTIVITY_FEED.length), 2500)
+    return () => clearInterval(interval)
+  }, [])
 
-        {/* === HERO === */}
-        <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, #0f2a18 0%, #0a0d0a 70%)", animation: "gradientShift 8s ease infinite alternate" }} />
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} style={{
-                position: "absolute", width: "2px", height: "2px", borderRadius: "50%",
-                background: "rgba(82,183,136,0.3)",
-                left: `${10 + (i * 7) % 80}%`,
-                bottom: `${-10 + (i * 13) % 20}%`,
-                animation: `floatUp ${8 + i * 2}s linear infinite`,
-                animationDelay: `${i * 0.7}s`,
-              }} />
+  // ===== GSAP ANIMATIONS =====
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // --- SECTION 1: THE REVEAL ---
+      const revealTl = gsap.timeline({ defaults: { ease: "power3.out" } })
+
+      revealTl
+        .fromTo(".reveal-line", { scaleX: 0 }, { scaleX: 1, duration: 0.6, delay: 0.3 })
+        .fromTo(".reveal-title", { y: -120, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.2)" }, "+=0.1")
+        .to(".reveal-line", { opacity: 0.3, duration: 0.15, yoyo: true, repeat: 1 }, "-=0.1")
+        .fromTo(".reveal-word", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.08 }, "+=0.2")
+        .fromTo(".reveal-subtitle", { opacity: 0 }, { opacity: 1, duration: 0.5 }, "+=0.3")
+        .fromTo(".reveal-cta", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, "+=0.2")
+        .fromTo(".reveal-ticker", { opacity: 0 }, { opacity: 1, duration: 0.5 }, "+=0.2")
+
+      // --- SECTION 2: THE SCANNER (pinned) ---
+      if (scannerRef.current) {
+        const scanTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: scannerRef.current,
+            start: "top top",
+            end: "+=200%",
+            pin: true,
+            scrub: 0.5,
+          }
+        })
+
+        scanTl
+          // Feature 1: Scan Anything
+          .fromTo(".feat-1", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 })
+          .to(".phone-screen-1", { opacity: 1, duration: 0.2 }, "<")
+          .to({}, { duration: 0.3 }) // hold
+          .to(".feat-1", { x: -100, opacity: 0, duration: 0.2 })
+          .to(".phone-screen-1", { opacity: 0, duration: 0.1 }, "<")
+          // Feature 2: Real Market Prices
+          .fromTo(".feat-2", { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 })
+          .to(".phone-screen-2", { opacity: 1, duration: 0.2 }, "<")
+          .to({}, { duration: 0.3 })
+          .to(".feat-2", { x: 100, opacity: 0, duration: 0.2 })
+          .to(".phone-screen-2", { opacity: 0, duration: 0.1 }, "<")
+          // Feature 3: List in Seconds
+          .fromTo(".feat-3", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 })
+          .to(".phone-screen-3", { opacity: 1, duration: 0.2 }, "<")
+          .to({}, { duration: 0.4 })
+      }
+
+      // --- SECTION 3: THE STORY (pinned) ---
+      if (storyRef.current) {
+        const storyTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: storyRef.current,
+            start: "top top",
+            end: "+=150%",
+            pin: true,
+            scrub: 0.5,
+          }
+        })
+
+        storyTl
+          // Beat 1: The Find
+          .fromTo(".story-photo", { rotation: -8, y: 80, opacity: 0 }, { rotation: -3, y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.5)" })
+          .fromTo(".story-question", { opacity: 0 }, { opacity: 1, duration: 0.3 }, "+=0.1")
+          .to({}, { duration: 0.2 })
+          // Beat 2: The Scan
+          .fromTo(".story-scanline", { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.3 })
+          .to(".story-question", { opacity: 0, duration: 0.1 }, "<")
+          .fromTo(".story-price", { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: "back.out(1.5)" })
+          .to({}, { duration: 0.2 })
+          // Beat 3: The Sale
+          .fromTo(".story-sold", { scale: 1.5, rotation: -15, opacity: 0 }, { scale: 1, rotation: -8, opacity: 1, duration: 0.25, ease: "back.out(2)" })
+          .fromTo(".story-total", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, "+=0.2")
+          .fromTo(".story-closing", { opacity: 0 }, { opacity: 1, duration: 0.5 }, "+=0.2")
+      }
+
+      // --- SECTION 4: DASHBOARD fade-in ---
+      if (dashRef.current) {
+        gsap.fromTo(".dash-stat", { y: 40, opacity: 0 }, {
+          y: 0, opacity: 1, stagger: 0.1, duration: 0.5,
+          scrollTrigger: { trigger: dashRef.current, start: "top 70%" }
+        })
+      }
+
+      // --- SECTION 5: PRICING slide-up ---
+      if (pricingRef.current) {
+        gsap.fromTo(".pricing-card", { y: 60, opacity: 0 }, {
+          y: 0, opacity: 1, stagger: 0.1, duration: 0.5,
+          scrollTrigger: { trigger: pricingRef.current, start: "top 70%" }
+        })
+      }
+
+    }, mainRef)
+
+    return () => ctx.revert()
+  }, [])
+
+  const activityItem = ACTIVITY_FEED[activityIdx]
+
+  return (
+    <div ref={mainRef}>
+      {/* ===== SECTION 1: THE REVEAL ===== */}
+      <section ref={revealRef} style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", textAlign: "center", position: "relative", overflow: "hidden", background: "#060d0a" }}>
+        {/* Aurora background */}
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 40%, rgba(45,107,69,0.04) 0%, transparent 60%), radial-gradient(ellipse at 70% 60%, rgba(201,148,58,0.02) 0%, transparent 60%)", backgroundSize: "200% 200%", animation: "aurora 30s ease infinite" }} />
+
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {/* Gold line */}
+          <div className="reveal-line" style={{ width: "80px", height: "1px", background: "var(--gold)", marginBottom: "24px", transformOrigin: "center", willChange: "transform" }} />
+
+          {/* FLIPT title */}
+          <h1 className="reveal-title" style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(80px, 15vw, 120px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: "16px", willChange: "transform, opacity" }}>
+            FLIPT
+          </h1>
+
+          {/* Tagline — word by word */}
+          <p style={{ fontSize: "clamp(20px, 4vw, 28px)", fontFamily: "var(--font-heading)", fontWeight: 400, color: "var(--text)", marginBottom: "16px", lineHeight: 1.4 }}>
+            {["Turn", "your", "clutter", "into", "cash."].map((word, i) => (
+              <span key={i} className="reveal-word" style={{ display: "inline-block", marginRight: "8px", willChange: "transform, opacity" }}>
+                {word}
+              </span>
+            ))}
+          </p>
+
+          {/* Subtitle */}
+          <p className="reveal-subtitle" style={{ fontSize: "16px", color: "var(--text-secondary)", marginBottom: "40px", willChange: "opacity" }}>
+            AI-powered resale pricing for Canadians
+          </p>
+
+          {/* CTA */}
+          <button className="reveal-cta btn-primary glow" onClick={() => router.push("/scan")} style={{ padding: "18px 48px", fontSize: "16px", fontWeight: 700, willChange: "transform, opacity" }}>
+            <Scan size={20} /> Scan an Item
+          </button>
+
+          <p style={{ fontSize: "13px", color: "var(--text-faint)", marginTop: "16px" }}>First 5 scans free — no credit card needed</p>
+        </div>
+
+        {/* Ticker */}
+        <div className="reveal-ticker" style={{ position: "absolute", bottom: "24px", left: 0, right: 0, overflow: "hidden", willChange: "opacity" }}>
+          <div style={{ display: "flex", animation: "ticker 40s linear infinite", width: "max-content" }}>
+            {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+              <span key={i} style={{ padding: "0 32px", fontSize: "12px", color: "var(--gold)", opacity: 0.5, whiteSpace: "nowrap", fontWeight: 500 }}>{item}</span>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div style={{ position: "relative", zIndex: 1 }}>
-            {/* Logo icon + wordmark */}
-            <ScaleIn>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "24px" }}>
-                <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "28px", fontWeight: 700, color: "#fff" }}>F</span>
-                </div>
-                <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "48px", fontWeight: 700, color: "var(--green-accent)" }}>Flipt</p>
-              </div>
-            </ScaleIn>
-
-            <h1 style={{ fontSize: "clamp(32px, 7vw, 56px)", fontFamily: "var(--font-heading)", lineHeight: 1.1, maxWidth: "600px", marginBottom: "16px" }}>
-              <WordReveal text="Turn your clutter into cash" />
-            </h1>
-
-            <FadeUp delay={0.8}>
-              <p style={{ fontSize: "18px", color: "var(--text-secondary)", maxWidth: "400px", margin: "0 auto 32px" }}>
-                AI-powered resale pricing for Canadians.
-              </p>
-            </FadeUp>
-
-            <FadeUp delay={1.1}>
-              <button onClick={() => router.push("/scan")} className="btn-primary full glow" style={{ maxWidth: "320px", margin: "0 auto" }}>
-                <Scan size={20} /> Scan Your First Item
-              </button>
-            </FadeUp>
-          </div>
-        </section>
-
-        {/* === STATS === */}
-        {loaded && todayValue > 0 && (
-          <section style={{ padding: "48px 20px", textAlign: "center" }}>
-            <FadeUp>
-              <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--green-accent)", marginBottom: "8px" }}>Total Value Found Today</p>
-              <p style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(36px, 10vw, 64px)", fontWeight: 700 }}>
-                <CountUp value={todayValue} prefix="$" />
-              </p>
-              <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginTop: "8px" }}>by Flipt users across Canada</p>
-            </FadeUp>
-          </section>
-        )}
-
-        {/* === HOW IT WORKS === */}
-        <section style={{ padding: "48px 20px" }}>
-          <FadeUp>
-            <h2 style={{ fontSize: "32px", textAlign: "center", marginBottom: "32px" }}>How It Works</h2>
-          </FadeUp>
-          <div style={{ maxWidth: "400px", margin: "0 auto" }}>
-            <StaggerContainer stagger={0.15}>
-              {[
-                { step: "01", icon: <Camera size={18} style={{ color: "var(--green-accent)" }} />, title: "Take a Photo", desc: "Snap a photo of anything you want to sell" },
-                { step: "02", icon: <BarChart3 size={18} style={{ color: "var(--green-accent)" }} />, title: "Get Instant Pricing", desc: "AI identifies the item and compares prices across 5 platforms" },
-                { step: "03", icon: <FileText size={18} style={{ color: "var(--green-accent)" }} />, title: "List and Sell", desc: "Copy the generated listing and post it anywhere" },
-              ].map((s, i) => (
-                <StaggerItem key={i}>
-                  <div style={{ display: "flex", gap: "16px", padding: "20px 0", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {s.icon}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>{s.title}</p>
-                      <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>{s.desc}</p>
-                    </div>
-                  </div>
-                </StaggerItem>
+      {/* ===== SECTION 2: THE SCANNER (pinned) ===== */}
+      <section ref={scannerRef} style={{ height: "100vh", position: "relative", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        {/* Phone mockup — CSS only */}
+        <div style={{ position: "relative", width: "220px", height: "440px", borderRadius: "36px", border: "3px solid #253d2d", background: "#0c1a12", boxShadow: "0 0 60px rgba(82,176,112,0.08), 0 20px 60px rgba(0,0,0,0.4)", zIndex: 2, flexShrink: 0 }}>
+          {/* Notch */}
+          <div style={{ position: "absolute", top: "8px", left: "50%", transform: "translateX(-50%)", width: "80px", height: "24px", borderRadius: "12px", background: "#060d0a" }} />
+          {/* Screen content */}
+          <div style={{ position: "absolute", top: "36px", left: "8px", right: "8px", bottom: "8px", borderRadius: "24px", background: "#060d0a", overflow: "hidden" }}>
+            {/* Default: scan interface */}
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+              <Camera size={28} style={{ color: "var(--text-faint)" }} />
+              <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>Scan anything</span>
+              {/* Corner brackets */}
+              {[{ top: 16, left: 16, bt: "3px", bl: "3px" }, { top: 16, right: 16, bt: "3px", br: "3px" }, { bottom: 16, left: 16, bb: "3px", bl: "3px" }, { bottom: 16, right: 16, bb: "3px", br: "3px" }].map((s, i) => (
+                <div key={i} style={{ position: "absolute", width: "16px", height: "16px", borderColor: "var(--gold)", borderStyle: "solid", borderWidth: 0, ...({ top: s.top, left: s.left, right: s.right, bottom: s.bottom, borderTopWidth: s.bt, borderLeftWidth: s.bl, borderBottomWidth: s.bb, borderRightWidth: s.br } as React.CSSProperties) }} />
               ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* === FEATURES SHOWCASE === */}
-        <section style={{ padding: "32px 0" }}>
-          {[
-            { icon: <Camera size={28} />, title: "Scan Anything", desc: "Point your camera at any item. Our AI identifies it instantly, tells you exactly what it's worth, and generates a ready-to-post listing in seconds.", num: "01" },
-            { icon: <BarChart3 size={28} />, title: "Real Market Prices", desc: "See live prices across Kijiji, Facebook Marketplace, eBay, Poshmark, and Craigslist — all at once. Know the best platform before you list.", num: "02" },
-            { icon: <FileText size={28} />, title: "List in Seconds", desc: "Get a professional title and description generated automatically. Just copy and paste to any platform. Optimized for quick sales.", num: "03" },
-          ].map((f, i) => (
-            <div key={i} style={{ padding: "48px 20px", borderTop: "1px solid var(--border)" }}>
-              <div style={{ maxWidth: "480px", margin: "0 auto" }}>
-                <FadeUp delay={0.1}>
-                  <p style={{ fontFamily: "var(--font-heading)", fontSize: "64px", fontWeight: 700, color: "var(--border)", lineHeight: 1, marginBottom: "16px" }}>{f.num}</p>
-                </FadeUp>
-                <SlideIn direction={i % 2 === 0 ? "left" : "right"}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", color: "var(--green-accent)" }}>
-                    {f.icon}
-                    <h2 style={{ fontSize: "28px" }}>{f.title}</h2>
-                  </div>
-                </SlideIn>
-                <FadeUp delay={0.2}>
-                  <p style={{ fontSize: "16px", color: "var(--text-secondary)", lineHeight: 1.7 }}>{f.desc}</p>
-                </FadeUp>
+            </div>
+            {/* Screen 1: Scanning */}
+            <div className="phone-screen-1" style={{ position: "absolute", inset: 0, background: "rgba(201,148,58,0.05)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0 }}>
+              <div style={{ width: "60%", height: "40%", border: "1px solid var(--gold)", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: "9px", color: "var(--gold)" }}>Scanning...</span>
               </div>
             </div>
-          ))}
-        </section>
+            {/* Screen 2: Results */}
+            <div className="phone-screen-2" style={{ position: "absolute", inset: 0, background: "#060d0a", padding: "20px 12px", opacity: 0 }}>
+              <div style={{ height: "40%", background: "var(--surface)", borderRadius: "8px", marginBottom: "8px" }} />
+              <p style={{ fontSize: "8px", color: "var(--text-faint)", marginBottom: "4px" }}>ESTIMATED VALUE</p>
+              <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gold)", fontFamily: "var(--font-heading)" }}>$85 – $120</p>
+            </div>
+            {/* Screen 3: Listing */}
+            <div className="phone-screen-3" style={{ position: "absolute", inset: 0, background: "#060d0a", padding: "20px 12px", opacity: 0 }}>
+              <p style={{ fontSize: "8px", color: "var(--gold)", marginBottom: "4px" }}>YOUR LISTING</p>
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>Bauer Hockey Skates</p>
+              <p style={{ fontSize: "8px", color: "var(--text-secondary)", lineHeight: 1.4 }}>Great condition Bauer Supreme skates, size 10. Minor wear on blades.</p>
+            </div>
+          </div>
+        </div>
 
-        {/* === RECENTLY SOLD TICKER === */}
-        <section style={{ padding: "32px 0", overflow: "hidden", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
-          <p style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", textAlign: "center", marginBottom: "16px" }}>Recently on Flipt</p>
-          <div style={{ display: "flex", animation: "ticker 30s linear infinite", width: "max-content" }}>
-            {[...tickerItems, ...tickerItems].map((sale, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 24px", whiteSpace: "nowrap" }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green-accent)", flexShrink: 0 }} />
-                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{sale}</p>
+        {/* Feature cards */}
+        <div className="feat-1" style={{ position: "absolute", left: "5%", top: "50%", transform: "translateY(-50%)", maxWidth: "280px", opacity: 0, willChange: "transform, opacity", zIndex: 3 }}>
+          <div className="card" style={{ borderColor: "var(--gold)", borderLeft: "3px solid var(--gold)" }}>
+            <p style={{ fontSize: "20px", fontWeight: 700, fontFamily: "var(--font-heading)", marginBottom: "8px" }}>Scan Anything</p>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: "12px" }}>Point your camera at any item — AI identifies it instantly</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+              {["Electronics", "Clothing", "Furniture", "Collectibles", "Sports"].map(t => (
+                <span key={t} className="platform-badge">{t}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="feat-2" style={{ position: "absolute", right: "5%", top: "50%", transform: "translateY(-50%)", maxWidth: "280px", opacity: 0, willChange: "transform, opacity", zIndex: 3 }}>
+          <div className="card" style={{ borderColor: "var(--gold)", borderLeft: "3px solid var(--gold)" }}>
+            <p style={{ fontSize: "20px", fontWeight: 700, fontFamily: "var(--font-heading)", marginBottom: "8px" }}>Real Market Prices</p>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: "12px" }}>See what your item sells for across 5 platforms</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {[{ p: "Kijiji", v: "$95" }, { p: "eBay", v: "$110" }, { p: "Facebook", v: "$85" }].map(x => (
+                <div key={x.p} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>{x.p}</span>
+                  <span style={{ color: "var(--gold)", fontWeight: 700 }}>{x.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="feat-3" style={{ position: "absolute", bottom: "10%", left: "50%", transform: "translateX(-50%)", maxWidth: "320px", width: "90%", opacity: 0, willChange: "transform, opacity", zIndex: 3 }}>
+          <div className="card" style={{ borderColor: "var(--gold)", borderTop: "3px solid var(--gold)", textAlign: "center" }}>
+            <p style={{ fontSize: "20px", fontWeight: 700, fontFamily: "var(--font-heading)", marginBottom: "8px" }}>List in Seconds</p>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: "16px" }}>Ready-to-post listing generated automatically</p>
+            <button onClick={() => router.push("/scan")} className="btn-primary" style={{ margin: "0 auto" }}>
+              Ready to try it? <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== SECTION 3: THE STORY (pinned) ===== */}
+      <section ref={storyRef} style={{ height: "100vh", position: "relative", background: "var(--bg-secondary)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", padding: "24px", maxWidth: "400px", width: "100%" }}>
+
+          {/* Polaroid photo card */}
+          <div className="story-photo" style={{ background: "#fff", padding: "12px 12px 40px", borderRadius: "4px", boxShadow: "0 8px 40px rgba(0,0,0,0.4)", width: "200px", willChange: "transform, opacity" }}>
+            <div style={{ width: "100%", aspectRatio: "1", background: "#1a1a1a", borderRadius: "2px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>
+              ⛸️
+            </div>
+            <p style={{ color: "#333", fontSize: "12px", fontWeight: 500, textAlign: "center", marginTop: "12px" }}>Found in the basement</p>
+          </div>
+
+          {/* Question */}
+          <p className="story-question" style={{ fontSize: "18px", color: "var(--text-secondary)", fontFamily: "var(--font-heading)", fontStyle: "italic", opacity: 0, willChange: "opacity" }}>
+            What is this worth?
+          </p>
+
+          {/* Scan line over photo */}
+          <div className="story-scanline" style={{ position: "absolute", top: "40%", left: "15%", right: "15%", height: "2px", background: "var(--gold)", boxShadow: "0 0 20px var(--gold)", opacity: 0, willChange: "transform, opacity", transformOrigin: "left" }} />
+
+          {/* Price card */}
+          <div className="story-price" style={{ background: "var(--surface)", border: "2px solid var(--gold)", borderRadius: "20px", padding: "20px 28px", textAlign: "center", opacity: 0, willChange: "transform, opacity" }}>
+            <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Hockey Skates</p>
+            <p style={{ fontSize: "36px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--gold)" }}>$85 – $120</p>
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>Best on: Kijiji</p>
+          </div>
+
+          {/* SOLD stamp */}
+          <div className="story-sold" style={{ position: "absolute", top: "20%", left: "10%", fontSize: "48px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--green-accent)", border: "4px solid var(--green-accent)", borderRadius: "8px", padding: "4px 16px", opacity: 0, willChange: "transform, opacity" }}>
+            SOLD
+          </div>
+
+          {/* Total earned */}
+          <div className="story-total" style={{ textAlign: "center", opacity: 0, willChange: "transform, opacity" }}>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "4px" }}>Sold for $95 in 3 days</p>
+            <p style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--font-heading)", color: "var(--gold)" }}>Total earned: $680</p>
+          </div>
+
+          {/* Closing line */}
+          <p className="story-closing" style={{ fontSize: "16px", color: "var(--text-secondary)", fontStyle: "italic", textAlign: "center", opacity: 0, willChange: "opacity" }}>
+            All from stuff sitting in one basement.
+          </p>
+        </div>
+      </section>
+
+      {/* ===== SECTION 4: THE DASHBOARD ===== */}
+      <section ref={dashRef} style={{ minHeight: "100vh", background: "var(--bg)", padding: "64px 20px 80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "40px" }}>
+        {/* Stats */}
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center", maxWidth: "600px", width: "100%" }}>
+          {[
+            { num: "847", label: "Canadians scanning right now", color: "var(--green-accent)" },
+            { num: "$2.3M", label: "Found in clutter this month", color: "var(--gold)" },
+            { num: "94%", label: "Scan accuracy rate", color: "var(--green-accent)" },
+          ].map((s, i) => (
+            <div key={i} className="dash-stat card" style={{ flex: "1 1 160px", textAlign: "center", padding: "28px 20px", willChange: "transform, opacity" }}>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.num}</p>
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "8px" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Live activity feed */}
+        <div style={{ maxWidth: "400px", width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green-accent)", animation: "goldPulse 2s ease infinite" }} />
+              <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Live Activity</p>
+            </div>
+          </div>
+          <div style={{ padding: "12px 20px", minHeight: "200px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            {ACTIVITY_FEED.slice(activityIdx, activityIdx + 5).concat(ACTIVITY_FEED.slice(0, Math.max(0, activityIdx + 5 - ACTIVITY_FEED.length))).map((a, i) => (
+              <div key={`${activityIdx}-${i}`} style={{ display: "flex", alignItems: "center", gap: "10px", opacity: i === 0 ? 1 : 0.7 - i * 0.12, transition: "opacity 0.5s" }}>
+                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--green)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 700, flexShrink: 0 }}>
+                  {a.city[0]}
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", flex: 1 }}>
+                  Someone in <span style={{ color: "var(--text)" }}>{a.city}</span> found a <span style={{ color: "var(--text)" }}>{a.item}</span> worth <span style={{ color: "var(--gold)", fontWeight: 700 }}>${a.price}</span>
+                </p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* === PRICING === */}
-        <section style={{ padding: "48px 20px" }}>
-          <FadeUp>
-            <h2 style={{ fontSize: "32px", textAlign: "center", marginBottom: "8px" }}>Simple Pricing</h2>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "32px" }}>Start free. Upgrade when you are ready.</p>
-          </FadeUp>
-          <div style={{ maxWidth: "720px", margin: "0 auto", display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
-            <ScaleIn delay={0.1}>
-              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "22px", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>Free</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "8px" }}>$0</p>
-                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "14px" }}>5 scans/month</p>
-                <button onClick={() => router.push("/scan")} className="btn-secondary" style={{ width: "100%", padding: "10px", fontSize: "12px" }}>Get Started</button>
-              </div>
-            </ScaleIn>
-            <ScaleIn delay={0.2}>
-              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--green-light)", border: "1px solid var(--green-accent)", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
-                <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "var(--green-accent)", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Most Popular</div>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--green-accent)", marginBottom: "4px" }}>Pro</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "4px" }}>$4.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
-                <p style={{ fontSize: "10px", color: "var(--green-accent)", fontWeight: 600, marginBottom: "8px" }}>or $39.99/year — save 33%</p>
-                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "14px" }}>Unlimited scans + all features</p>
-                <button onClick={() => router.push("/settings")} className="btn-primary" style={{ width: "100%", padding: "10px", fontSize: "12px" }}>Upgrade</button>
-              </div>
-            </ScaleIn>
-            <ScaleIn delay={0.3}>
-              <div style={{ flex: "1 1 180px", maxWidth: "220px", background: "var(--surface)", border: "1px solid #c9a84c", borderRadius: "16px", padding: "22px", textAlign: "center", position: "relative" }}>
-                <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", background: "#c9a84c", color: "#000", fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "50px", whiteSpace: "nowrap" }}>Best for Power Sellers</div>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "#c9a84c", marginBottom: "4px" }}>Business</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "26px", fontWeight: 700, marginBottom: "4px" }}>$14.99<span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>/mo</span></p>
-                <p style={{ fontSize: "10px", color: "#c9a84c", fontWeight: 600, marginBottom: "8px" }}>or $119.99/year — save 33%</p>
-                <div style={{ fontSize: "10px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.6, textAlign: "left" }}>
-                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Everything in Pro</p>
-                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Business P&amp;L + Tax estimates</p>
-                  <p style={{ marginBottom: "2px" }}><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Multi account manager</p>
-                  <p><Check size={10} style={{ color: "#c9a84c", display: "inline", verticalAlign: "middle" }} /> Bulk scan + CSV export</p>
+      {/* ===== SECTION 5: PRICING ===== */}
+      <section ref={pricingRef} style={{ minHeight: "100vh", background: "var(--bg-secondary)", padding: "80px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <h2 style={{ fontSize: "clamp(36px, 6vw, 64px)", fontFamily: "var(--font-heading)", textAlign: "center", marginBottom: "12px" }}>Start for free.</h2>
+        <p style={{ fontSize: "16px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "48px" }}>No credit card needed. First 5 scans on us.</p>
+
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "center", maxWidth: "640px", width: "100%" }}>
+          {/* Pro card */}
+          <div className="pricing-card" style={{ flex: "1 1 260px", maxWidth: "300px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "32px 24px", borderTop: "3px solid var(--green-accent)", willChange: "transform, opacity" }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--green-accent)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>Pro</p>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "4px" }}>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: "40px", fontWeight: 700 }}>$4.99</span>
+              <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>/month</span>
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--green-accent)", fontWeight: 600, marginBottom: "24px" }}>or $39.99/year — save 33%</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "24px" }}>
+              {PRO_FEATURES.map(f => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Check size={14} style={{ color: "var(--green-accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{f}</span>
                 </div>
-                <button onClick={() => router.push("/settings")} style={{ width: "100%", padding: "10px", fontSize: "12px", fontWeight: 600, fontFamily: "var(--font-body)", background: "#c9a84c", color: "#000", border: "none", borderRadius: "50px", cursor: "pointer" }}>Upgrade</button>
-              </div>
-            </ScaleIn>
+              ))}
+            </div>
+            <button onClick={() => router.push("/settings")} className="btn-secondary" style={{ width: "100%" }}>Start Free Trial</button>
           </div>
-        </section>
 
-        {/* === FINAL CTA === */}
-        <section style={{ minHeight: "50vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "48px 24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <ScaleIn>
-              <h2 style={{ fontSize: "clamp(28px, 6vw, 44px)", maxWidth: "500px", marginBottom: "24px", textAlign: "center" }}>Ready to find out what your stuff is worth?</h2>
-            </ScaleIn>
-            <FadeUp delay={0.3}>
-              <button onClick={() => router.push("/scan")} className="btn-primary glow" style={{ padding: "18px 48px", fontSize: "16px" }}>
-                <Scan size={20} /> Scan an Item <ArrowRight size={16} />
-              </button>
-            </FadeUp>
+          {/* Business card */}
+          <div className="pricing-card" style={{ flex: "1 1 260px", maxWidth: "300px", background: "var(--surface)", border: "1px solid var(--gold)", borderRadius: "20px", padding: "32px 24px", borderTop: "3px solid var(--gold)", boxShadow: "0 0 40px var(--gold-glow)", position: "relative", willChange: "transform, opacity" }}>
+            <div style={{ position: "absolute", top: "16px", right: "16px", background: "var(--gold-gradient)", color: "#060d0a", fontSize: "9px", fontWeight: 700, padding: "3px 10px", borderRadius: "50px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Most Popular</div>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>Business</p>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "4px" }}>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: "40px", fontWeight: 700 }}>$14.99</span>
+              <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>/month</span>
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--gold)", fontWeight: 600, marginBottom: "24px" }}>or $119.99/year — save 33%</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "24px" }}>
+              {BIZ_FEATURES.map(f => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Check size={14} style={{ color: "var(--gold)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => router.push("/settings")} className="btn-primary" style={{ width: "100%" }}>Start Free Trial</button>
           </div>
-        </section>
-      </main>
-    </PageTransition>
+        </div>
+
+        <p style={{ fontSize: "13px", color: "var(--text-faint)", marginTop: "32px", textAlign: "center" }}>
+          Join 10,000+ Canadians turning clutter into cash
+        </p>
+      </section>
+
+      {/* ===== FINAL CTA ===== */}
+      <section style={{ minHeight: "50vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "64px 24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <h2 style={{ fontSize: "clamp(28px, 6vw, 44px)", fontFamily: "var(--font-heading)", maxWidth: "500px", marginBottom: "32px" }}>
+            Ready to find out what your stuff is worth?
+          </h2>
+          <button onClick={() => router.push("/scan")} className="btn-primary glow" style={{ padding: "20px 48px", fontSize: "16px", fontWeight: 700 }}>
+            <Scan size={20} /> Scan an Item <ArrowRight size={16} />
+          </button>
+        </div>
+      </section>
+    </div>
   )
 }

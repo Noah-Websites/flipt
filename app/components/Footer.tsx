@@ -23,7 +23,7 @@ export default function Footer() {
     }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
           <span style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "16px", fontWeight: 700, color: "#fff" }}>F</span>
         </div>
         <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: "20px", fontWeight: 700, color: "var(--text-secondary)" }}>
